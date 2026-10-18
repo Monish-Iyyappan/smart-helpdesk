@@ -1,0 +1,232 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================================
+   SIGNAL DESK DESIGN TOKENS
+   All colors, fonts, radii, shadows and durations are defined here.
+   Contrast ratio for every text/background pair is >= 4.5:1 (WCAG AA).
+   ============================================================================= */
+
+:root {
+  /* Surfaces & Backgrounds */
+  --color-bg: #fbfbfe;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f3f2fe;
+  --color-surface-muted: #f0effe;
+  --color-border: #dedcff;
+  --color-border-subtle: #eeedfc;
+
+  /* Signal Desk Core Brand */
+  --color-primary: #2f27ce;
+  --color-primary-hover: #261fa6;
+  --color-primary-text: #ffffff;
+  --color-secondary: #dedcff;
+  --color-secondary-hover: #cfcbfe;
+  --color-secondary-text: #050315;
+  --color-accent: #433bff;
+  --color-accent-text: #ffffff;
+  --color-accent-ring: rgba(67, 59, 255, 0.35);
+
+  /* Typography */
+  --color-text: #050315;
+  --color-text-muted: #444061;
+  --color-text-dim: #5a557d;
+
+  /* Feedback */
+  --color-danger: #b91c1c;
+  --color-danger-hover: #991b1b;
+  --color-danger-bg: #fee2e2;
+  --color-danger-text: #991b1b;
+  --color-danger-border: #fca5a5;
+
+  --color-success: #15803d;
+  --color-success-bg: #dcfce7;
+  --color-success-text: #166534;
+  --color-success-border: #86efac;
+
+  /* Overlay */
+  --color-overlay: rgba(5, 3, 21, 0.6);
+
+  /* Urgency Colors: LOW slate, MEDIUM amber, HIGH orange, URGENT red */
+  --color-urgency-low-bg: #f1f5f9;
+  --color-urgency-low-text: #1e293b;
+  --color-urgency-low-border: #cbd5e1;
+
+  --color-urgency-medium-bg: #fef3c7;
+  --color-urgency-medium-text: #78350f;
+  --color-urgency-medium-border: #fcd34d;
+
+  --color-urgency-high-bg: #ffedd5;
+  --color-urgency-high-text: #7c2d12;
+  --color-urgency-high-border: #fdba74;
+
+  --color-urgency-urgent-bg: #fee2e2;
+  --color-urgency-urgent-text: #7f1d1d;
+  --color-urgency-urgent-border: #fca5a5;
+
+  /* Overdue Badge & Pulsing Ring */
+  --color-overdue-bg: #ffe4e6;
+  --color-overdue-text: #881337;
+  --color-overdue-border: #fda4af;
+  --color-overdue-glow: rgba(225, 29, 72, 0.45);
+
+  /* Ticket Statuses */
+  --color-status-open-bg: #eef2ff;
+  --color-status-open-text: #312e81;
+
+  --color-status-assigned-bg: #dedcff;
+  --color-status-assigned-text: #1e1b4b;
+
+  --color-status-progress-bg: #fef3c7;
+  --color-status-progress-text: #78350f;
+
+  --color-status-resolved-bg: #dcfce7;
+  --color-status-resolved-text: #14532d;
+
+  --color-status-closed-bg: #f1f5f9;
+  --color-status-closed-text: #334155;
+
+  /* Fonts */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Border Radii */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(5, 3, 21, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(5, 3, 21, 0.08), 0 2px 4px -2px rgba(5, 3, 21, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(5, 3, 21, 0.1), 0 4px 6px -4px rgba(5, 3, 21, 0.08);
+
+  /* Transitions (150-300 ms) */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+}
+
+/* =============================================================================
+   DARK MODE TOKENS (Signal Desk Dark)
+   ============================================================================= */
+
+.dark, [data-theme='dark'] {
+  /* Surfaces & Backgrounds */
+  --color-bg: #050315;
+  --color-surface: #0e0b24;
+  --color-surface-hover: #171338;
+  --color-surface-muted: #141030;
+  --color-border: #282356;
+  --color-border-subtle: #1f1a44;
+
+  /* Signal Desk Core Brand (Dark) */
+  --color-primary: #8b85ff;
+  --color-primary-hover: #756eff;
+  --color-primary-text: #050315;
+  --color-secondary: #1a1745;
+  --color-secondary-hover: #24205a;
+  --color-secondary-text: #fbfbfe;
+  --color-accent: #6d66ff;
+  --color-accent-text: #050315;
+  --color-accent-ring: rgba(109, 102, 255, 0.4);
+
+  /* Typography */
+  --color-text: #fbfbfe;
+  --color-text-muted: #c7c4e5;
+  --color-text-dim: #9e99c8;
+
+  /* Feedback */
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
+  --color-danger-bg: #450a0a;
+  --color-danger-text: #fca5a5;
+  --color-danger-border: #7f1d1d;
+
+  --color-success: #22c55e;
+  --color-success-bg: #052e16;
+  --color-success-text: #86efac;
+  --color-success-border: #14532d;
+
+  /* Overlay */
+  --color-overlay: rgba(0, 0, 0, 0.75);
+
+  /* Urgency Colors (Dark) */
+  --color-urgency-low-bg: #1e293b;
+  --color-urgency-low-text: #e2e8f0;
+  --color-urgency-low-border: #334155;
+
+  --color-urgency-medium-bg: #451a03;
+  --color-urgency-medium-text: #fde68a;
+  --color-urgency-medium-border: #78350f;
+
+  --color-urgency-high-bg: #431407;
+  --color-urgency-high-text: #fed7aa;
+  --color-urgency-high-border: #7c2d12;
+
+  --color-urgency-urgent-bg: #450a0a;
+  --color-urgency-urgent-text: #fecaca;
+  --color-urgency-urgent-border: #7f1d1d;
+
+  /* Overdue Badge & Glow (Dark) */
+  --color-overdue-bg: #4c0519;
+  --color-overdue-text: #fecdd3;
+  --color-overdue-border: #881337;
+  --color-overdue-glow: rgba(244, 63, 94, 0.45);
+
+  /* Ticket Statuses (Dark) */
+  --color-status-open-bg: #1e1b4b;
+  --color-status-open-text: #c7d2fe;
+
+  --color-status-assigned-bg: #2e1065;
+  --color-status-assigned-text: #ddd6fe;
+
+  --color-status-progress-bg: #451a03;
+  --color-status-progress-text: #fde68a;
+
+  --color-status-resolved-bg: #052e16;
+  --color-status-resolved-text: #86efac;
+
+  --color-status-closed-bg: #1e293b;
+  --color-status-closed-text: #cbd5e1;
+
+  /* Shadows (Dark) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+}
+
+/* Base Body Application */
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+/* Overdue glowing ring: ONLY looping animation in application.
+   Stops completely under reduced motion. */
+@keyframes overdue-ring-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--color-overdue-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--color-overdue-glow);
+  }
+}
+
+.animate-overdue-glow {
+  animation: overdue-ring-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-overdue-glow {
+    animation: none !important;
+  }
+}
