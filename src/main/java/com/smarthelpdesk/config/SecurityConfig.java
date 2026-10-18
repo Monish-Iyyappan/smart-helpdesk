@@ -46,7 +46,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
-                .filter(s -> !s.isEmpty())
+                .filter(s -> !s.isEmpty() && !s.equals("*"))
                 .toList();
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
@@ -65,6 +65,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                 .anyRequest().authenticated()
             )

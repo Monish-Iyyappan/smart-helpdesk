@@ -3,13 +3,16 @@ target/
 *.class
 
 # Credentials and environment secrets
-.env
-.env.*
+.env*
 *.env
 credentials*
 *.pem
 *.key
 *.p12
+
+# Database backup contents
+database/backup/*
+!database/backup/.gitkeep
 
 # Log files
 *.log
@@ -26,3 +29,5 @@ logs/
 # Frontend dependencies and distribution builds
 frontend/node_modules/
 frontend/dist/
+
+.vercel
