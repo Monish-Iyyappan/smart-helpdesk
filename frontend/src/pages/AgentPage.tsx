@@ -6,7 +6,10 @@ import { useAuth } from '../auth/AuthContext';
 import { Shell } from '../components/Shell';
 import { TicketCard } from '../components/TicketCard';
 import { TicketDetailModal } from '../components/TicketDetailModal';
-import { CountUp } from '../components/CountUp';
+import { BentoStatCard } from '../components/BentoStatCard';
+import { GreetingHeader } from '../components/GreetingHeader';
+import { EmptyState } from '../components/EmptyState';
+import { CardSkeleton } from '../components/ui/skeleton';
 
 export const AgentPage: React.FC = () => {
   const { user, showToast } = useAuth();
@@ -178,55 +181,82 @@ export const AgentPage: React.FC = () => {
         </div>
       }
     >
-      {/* Overview Cards with Count-up */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6">
-        <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-          <div className="text-xs font-semibold text-text-muted">Assigned Queue</div>
-          <div className="text-2xl font-bold text-text mt-1">
-            <CountUp value={assignedCount} />
+      {/* Bento Greeting Header */}
+      <GreetingHeader
+        subtitle="Manage assigned queue, advance ticket statuses, and meet SLA resolution goals."
+        actions={
+          <div className="flex items-center gap-1 bg-surface-muted p-1 rounded-xl border border-border">
+            <button
+              type="button"
+              onClick={() => setViewMode('KANBAN')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors focus-ring ${
+                viewMode === 'KANBAN'
+                  ? 'bg-surface text-primary shadow-xs'
+                  : 'text-text-muted hover:text-text'
+              }`}
+            >
+              Kanban Board
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('LIST')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors focus-ring ${
+                viewMode === 'LIST'
+                  ? 'bg-surface text-primary shadow-xs'
+                  : 'text-text-muted hover:text-text'
+              }`}
+            >
+              List View
+            </button>
           </div>
-          <div className="text-xs text-text-dim mt-0.5">Awaiting initial action</div>
-        </div>
+        }
+      />
 
-        <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-          <div className="text-xs font-semibold text-text-muted">In Progress</div>
-          <div className="text-2xl font-bold text-text mt-1">
-            <CountUp value={progressCount} />
-          </div>
-          <div className="text-xs text-text-dim mt-0.5">Currently active work</div>
-        </div>
-
-        <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-          <div className="text-xs font-semibold text-text-muted">Resolved</div>
-          <div className="text-2xl font-bold text-success mt-1">
-            <CountUp value={resolvedCount} />
-          </div>
-          <div className="text-xs text-text-dim mt-0.5">Awaiting student closing</div>
-        </div>
-
-        <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-          <div className="text-xs font-semibold text-text-muted">Overdue SLA</div>
-          <div className="text-2xl font-bold text-danger mt-1">
-            <CountUp value={overdueCount} />
-          </div>
-          <div className="text-xs text-text-dim mt-0.5">Past urgency deadline</div>
-        </div>
+      {/* Overview Cards with Bento Stat Tiles & Sparklines */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <BentoStatCard
+          label="Assigned Queue"
+          value={assignedCount}
+          sparklineData={[assignedCount, assignedCount + 1, assignedCount]}
+          description="Awaiting initial work"
+        />
+        <BentoStatCard
+          label="In Progress"
+          value={progressCount}
+          sparklineData={[progressCount, progressCount + 1, progressCount]}
+          sparklineColor="var(--color-accent)"
+          description="Currently active work"
+        />
+        <BentoStatCard
+          label="Resolved"
+          value={resolvedCount}
+          sparklineData={[Math.max(0, resolvedCount - 1), resolvedCount, resolvedCount]}
+          sparklineColor="var(--color-success)"
+          description="Awaiting student closing"
+        />
+        <BentoStatCard
+          label="Overdue SLA"
+          value={overdueCount}
+          sparklineData={[overdueCount, overdueCount + 1, overdueCount]}
+          isAlert={overdueCount > 0}
+          description="Urgent SLA breached"
+        />
       </div>
 
       {/* Filter and Sort Bar */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6 p-3 bg-surface border border-border rounded-xl shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6 p-3 bg-surface border border-border rounded-2xl shadow-xs">
         <div className="flex items-center gap-2 flex-wrap">
           {viewMode === 'LIST' && (
             <>
-              <span className="text-xs font-semibold text-text-muted">Status:</span>
+              <span className="text-xs font-bold text-text-muted">Status:</span>
               {(['ALL', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED'] as const).map((st) => (
                 <button
                   key={st}
                   type="button"
                   onClick={() => setStatusFilter(st)}
-                  className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                  className={`px-2.5 py-1 text-xs rounded-lg transition-colors focus-ring ${
                     statusFilter === st
-                      ? 'bg-primary text-primary-text font-semibold'
+                      ? 'bg-primary text-primary-text font-bold shadow-xs'
                       : 'bg-surface-muted text-text-muted hover:text-text'
                   }`}
                 >
@@ -241,18 +271,18 @@ export const AgentPage: React.FC = () => {
               type="checkbox"
               checked={overdueOnly}
               onChange={(e) => setOverdueOnly(e.target.checked)}
-              className="rounded border-border text-primary focus:ring-0"
+              className="rounded border-border text-primary focus-ring"
             />
             <span>Overdue Only</span>
           </label>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-text-muted">Sort:</span>
+          <span className="text-xs font-bold text-text-muted">Sort:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'URGENCY' | 'NEWEST' | 'OLDEST')}
-            className="px-2 py-1 text-xs rounded-md border border-border bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary"
+            className="px-2.5 py-1 text-xs rounded-lg border border-border bg-surface text-text focus-ring"
           >
             <option value="URGENCY">Urgency Level (Highest First)</option>
             <option value="NEWEST">Newest First</option>
@@ -263,19 +293,17 @@ export const AgentPage: React.FC = () => {
 
       {/* Loading State */}
       {isLoading ? (
-        <div className="text-center py-16 bg-surface border border-border rounded-xl">
-          <div className="inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
-          <p className="text-xs text-text-muted">Loading assigned tickets...</p>
-        </div>
+        <CardSkeleton count={3} />
       ) : filteredTickets.length === 0 ? (
-        <div className="text-center py-16 bg-surface border border-border rounded-xl p-6">
-          <p className="text-sm font-semibold text-text">No tickets found</p>
-          <p className="text-xs text-text-muted mt-1">
-            {overdueOnly
+        <EmptyState
+          title="No Tickets Found"
+          description={
+            overdueOnly
               ? 'No overdue tickets match your current filters.'
-              : 'You have no tickets matching the current criteria.'}
-          </p>
-        </div>
+              : 'You have no assigned tickets matching the current criteria.'
+          }
+          iconType="inbox"
+        />
       ) : viewMode === 'KANBAN' ? (
         /* Agent Kanban Board View (Assigned / In Progress / Resolved) */
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">

@@ -270,6 +270,22 @@
   box-shadow: 0 8px 24px -4px var(--bento-glow);
 }
 
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.animate-shine {
+  animation: shine 4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shine {
+    animation: none !important;
+  }
+}
+
 /* Base Body Application */
 body {
   margin: 0;

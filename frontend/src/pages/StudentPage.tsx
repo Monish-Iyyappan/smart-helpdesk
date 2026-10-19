@@ -9,6 +9,10 @@ import { TicketDetailModal } from '../components/TicketDetailModal';
 import { PlusIcon, LinkIcon } from '../components/Icons';
 import { Modal, ModalBody, ModalContent } from '../components/ui/animated-modal';
 import { StatefulButton } from '../components/ui/stateful-button';
+import { BentoStatCard } from '../components/BentoStatCard';
+import { GreetingHeader } from '../components/GreetingHeader';
+import { EmptyState } from '../components/EmptyState';
+import { CardSkeleton } from '../components/ui/skeleton';
 
 export const StudentPage: React.FC = () => {
   const { user, showToast } = useAuth();
@@ -149,6 +153,14 @@ export const StudentPage: React.FC = () => {
     return result;
   }, [tickets, statusFilter, sortBy]);
 
+  const openCount = tickets.filter(
+    (t) => t.status === 'OPEN' || t.status === 'ASSIGNED' || t.status === 'IN_PROGRESS'
+  ).length;
+  const resolvedCount = tickets.filter(
+    (t) => t.status === 'RESOLVED' || t.status === 'CLOSED'
+  ).length;
+  const overdueCount = tickets.filter((t) => t.overdue).length;
+
   return (
     <Shell
       title="My Tickets"
@@ -157,7 +169,7 @@ export const StudentPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowJoinModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-border bg-surface text-text hover:bg-surface-hover transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors focus-ring"
           >
             <LinkIcon className="w-3.5 h-3.5" />
             <span>Join Ticket</span>
@@ -165,7 +177,7 @@ export const StudentPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-primary text-primary-text hover:bg-primary-hover transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover transition-colors shadow-xs focus-ring"
           >
             <PlusIcon className="w-3.5 h-3.5" />
             <span>Create Ticket</span>
@@ -173,18 +185,74 @@ export const StudentPage: React.FC = () => {
         </div>
       }
     >
+      {/* Bento Greeting Header */}
+      <GreetingHeader
+        subtitle="Track submitted requests, join existing shared tickets, and check live updates."
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowJoinModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors focus-ring"
+            >
+              <LinkIcon className="w-3.5 h-3.5" />
+              <span>Join Ticket</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover transition-colors shadow-sm focus-ring"
+            >
+              <PlusIcon className="w-3.5 h-3.5" />
+              <span>Create Ticket</span>
+            </button>
+          </div>
+        }
+      />
+
+      {/* Bento Stat Tiles */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <BentoStatCard
+          label="Total Tickets"
+          value={tickets.length}
+          sparklineData={[tickets.length, tickets.length + 1, Math.max(1, tickets.length), tickets.length]}
+          description="All submissions"
+        />
+        <BentoStatCard
+          label="Active In Flight"
+          value={openCount}
+          sparklineData={[openCount, openCount + 1, openCount]}
+          sparklineColor="var(--color-accent)"
+          description="Open, assigned & working"
+        />
+        <BentoStatCard
+          label="Resolved / Closed"
+          value={resolvedCount}
+          sparklineData={[Math.max(0, resolvedCount - 1), resolvedCount, resolvedCount]}
+          sparklineColor="var(--color-success)"
+          description="Successfully completed"
+        />
+        <BentoStatCard
+          label="Overdue Alerts"
+          value={overdueCount}
+          sparklineData={[overdueCount, overdueCount + 1, overdueCount]}
+          isAlert={overdueCount > 0}
+          description="SLA breached tickets"
+        />
+      </div>
+
       {/* Filtering and Sorting Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 p-3 bg-surface border border-border rounded-xl shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 p-3 bg-surface border border-border rounded-2xl shadow-xs">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-semibold text-text-muted">Status:</span>
+          <span className="text-xs font-bold text-text-muted">Status:</span>
           {(['ALL', 'OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const).map((st) => (
             <button
               key={st}
               type="button"
               onClick={() => setStatusFilter(st)}
-              className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+              className={`px-2.5 py-1 text-xs rounded-lg transition-colors focus-ring ${
                 statusFilter === st
-                  ? 'bg-primary text-primary-text font-semibold shadow-xs'
+                  ? 'bg-primary text-primary-text font-bold shadow-xs'
                   : 'bg-surface-muted text-text-muted hover:text-text'
               }`}
             >
@@ -194,11 +262,11 @@ export const StudentPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-text-muted">Sort:</span>
+          <span className="text-xs font-bold text-text-muted">Sort:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'NEWEST' | 'URGENCY' | 'OLDEST')}
-            className="px-2 py-1 text-xs rounded-md border border-border bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary"
+            className="px-2.5 py-1 text-xs rounded-lg border border-border bg-surface text-text focus-ring"
           >
             <option value="NEWEST">Newest First</option>
             <option value="URGENCY">Urgency Level</option>
@@ -209,19 +277,27 @@ export const StudentPage: React.FC = () => {
 
       {/* Ticket List with Staggered Entrance & Layout Animation */}
       {isLoading ? (
-        <div className="text-center py-16 bg-surface border border-border rounded-xl">
-          <div className="inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
-          <p className="text-xs text-text-muted">Loading your tickets...</p>
-        </div>
+        <CardSkeleton count={3} />
       ) : filteredTickets.length === 0 ? (
-        <div className="text-center py-16 bg-surface border border-border rounded-xl p-6">
-          <p className="text-sm font-semibold text-text">No tickets found</p>
-          <p className="text-xs text-text-muted mt-1">
-            {statusFilter !== 'ALL'
-              ? `You don't have any tickets with status ${statusFilter}`
-              : 'Create a new ticket or join an existing ticket using its ticket number.'}
-          </p>
-        </div>
+        <EmptyState
+          title="No Tickets Found"
+          description={
+            statusFilter !== 'ALL'
+              ? `You don't have any tickets with status ${statusFilter}.`
+              : 'Create a new ticket or join an existing ticket using its ticket number.'
+          }
+          iconType="tickets"
+          action={
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover transition-colors shadow-xs focus-ring"
+            >
+              <PlusIcon className="w-3.5 h-3.5" />
+              <span>Create First Ticket</span>
+            </button>
+          }
+        />
       ) : (
         <motion.div
           layout

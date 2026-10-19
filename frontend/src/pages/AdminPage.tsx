@@ -17,6 +17,10 @@ import { PlusIcon, UserPlusIcon, LinkIcon } from '../components/Icons';
 import { CountUp } from '../components/CountUp';
 import { AnimatedTabs } from '../components/ui/animated-tabs';
 import { StatefulButton } from '../components/ui/stateful-button';
+import { BentoStatCard } from '../components/BentoStatCard';
+import { GreetingHeader } from '../components/GreetingHeader';
+import { EmptyState } from '../components/EmptyState';
+import { CardSkeleton } from '../components/ui/skeleton';
 
 type AdminTab = 'STATS' | 'ALL_TICKETS' | 'UNASSIGNED' | 'OVERDUE' | 'INCIDENTS' | 'AGENTS';
 
@@ -285,6 +289,39 @@ export const AdminPage: React.FC = () => {
         </div>
       }
     >
+      {/* Bento Greeting Header */}
+      <GreetingHeader
+        subtitle="Full administrative control over tickets, SLA breaches, campus incidents, and agent workloads."
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAddAgentModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors focus-ring"
+            >
+              <UserPlusIcon className="w-3.5 h-3.5" />
+              <span>Add Agent</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateIncidentModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors focus-ring"
+            >
+              <PlusIcon className="w-3.5 h-3.5" />
+              <span>New Incident</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowLinkIncidentModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover transition-colors shadow-sm focus-ring"
+            >
+              <LinkIcon className="w-3.5 h-3.5" />
+              <span>Link Ticket</span>
+            </button>
+          </div>
+        }
+      />
+
       {/* Aceternity Animated Tabs */}
       <div className="mb-6">
         <AnimatedTabs
@@ -297,32 +334,35 @@ export const AdminPage: React.FC = () => {
       {/* Tab 1: Stats & System Overview */}
       {activeTab === 'STATS' && (
         <div className="space-y-6">
-          {/* Key Metric Cards with CountUp */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-              <span className="text-xs font-semibold text-text-muted">Total Tickets</span>
-              <div className="text-2xl font-bold text-text mt-1">
-                <CountUp value={stats?.totalTickets || 0} />
-              </div>
-            </div>
-            <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-              <span className="text-xs font-semibold text-text-muted">Unassigned</span>
-              <div className="text-2xl font-bold text-text mt-1">
-                <CountUp value={unassignedTickets.length} />
-              </div>
-            </div>
-            <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-              <span className="text-xs font-semibold text-text-muted">Overdue SLA</span>
-              <div className="text-2xl font-bold text-danger mt-1">
-                <CountUp value={stats?.overdueTickets ?? overdueTickets.length} />
-              </div>
-            </div>
-            <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-              <span className="text-xs font-semibold text-text-muted">Active Incidents</span>
-              <div className="text-2xl font-bold text-text mt-1">
-                <CountUp value={stats?.totalIncidents || incidents.length} />
-              </div>
-            </div>
+          {/* Key Metric Cards with BentoStatCards and Sparklines */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <BentoStatCard
+              label="Total Tickets"
+              value={stats?.totalTickets || allTickets.length}
+              sparklineData={[allTickets.length, allTickets.length + 2, allTickets.length + 1, allTickets.length]}
+              description="System wide volume"
+            />
+            <BentoStatCard
+              label="Unassigned Queue"
+              value={unassignedTickets.length}
+              sparklineData={[unassignedTickets.length + 1, unassignedTickets.length, unassignedTickets.length]}
+              sparklineColor="var(--color-accent)"
+              description="Requires agent triage"
+            />
+            <BentoStatCard
+              label="Overdue SLA"
+              value={stats?.overdueTickets ?? overdueTickets.length}
+              sparklineData={[overdueTickets.length, overdueTickets.length + 1, overdueTickets.length]}
+              isAlert={(stats?.overdueTickets ?? overdueTickets.length) > 0}
+              description="Target SLA breached"
+            />
+            <BentoStatCard
+              label="Active Incidents"
+              value={stats?.totalIncidents ?? incidents.length}
+              sparklineData={[incidents.length, incidents.length + 1, incidents.length]}
+              sparklineColor="var(--color-danger)"
+              description="Major campus issues"
+            />
           </div>
 
           {/* Urgency Distribution with CountUp */}
@@ -439,19 +479,17 @@ export const AdminPage: React.FC = () => {
 
           {/* List display with staggered entrance and layout animation */}
           {isLoading ? (
-            <div className="text-center py-16 bg-surface border border-border rounded-xl">
-              <div className="inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
-              <p className="text-xs text-text-muted">Loading tickets...</p>
-            </div>
+            <CardSkeleton count={4} />
           ) : displayedTickets.length === 0 ? (
-            <div className="text-center py-16 bg-surface border border-border rounded-xl p-6">
-              <p className="text-sm font-semibold text-text">No tickets found</p>
-              <p className="text-xs text-text-muted mt-1">
-                {ticketSearch
+            <EmptyState
+              title="No Tickets in View"
+              description={
+                ticketSearch
                   ? 'No tickets match your search query.'
-                  : 'There are currently no tickets in this view.'}
-              </p>
-            </div>
+                  : 'There are currently no tickets in this administrative view.'
+              }
+              iconType="tickets"
+            />
           ) : (
             <motion.div
               layout
