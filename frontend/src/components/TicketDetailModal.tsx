@@ -4,8 +4,9 @@ import type { Role, TicketDetail, TicketStatus, User } from '../api/types';
 import { api } from '../api/endpoints';
 import { useAuth } from '../auth/AuthContext';
 import { OverdueBadge, RequestedPriorityBadge, StatusBadge, UrgencyBadge } from './Badge';
-import { MessageSquareIcon, XCircleIcon } from './Icons';
+import { MessageSquareIcon, XCircleIcon, ClockAlertIcon } from './Icons';
 import { StatefulButton } from './ui/stateful-button';
+import { Timeline } from './ui/timeline';
 
 interface TicketDetailModalProps {
   ticket: TicketDetail;
@@ -99,7 +100,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   const handleReopenTicket = async () => {
     setIsUpdatingStatus(true);
     try {
-      await api.admin.reopenTicket(ticket.ticketId);
+      await api.tickets.updateStatus(ticket.ticketId, 'IN_PROGRESS');
       showToast('Ticket reopened to IN_PROGRESS', 'success');
       onRefresh();
     } catch {
@@ -111,33 +112,54 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
   const currentStatusIndex = STATUS_STEPS.findIndex((s) => s.status === ticket.status);
 
+  // Map comments to OriginKit timeline items
+  const timelineItems = (ticket.comments || []).map((c) => ({
+    id: c.commentId,
+    author: c.authorName,
+    time: new Date(c.createdAt).toLocaleString(),
+    content: c.commentText,
+    isStaff: ticket.assignedAgentName ? c.authorName === ticket.assignedAgentName : false,
+  }));
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-overlay overflow-y-auto"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+      {/* Backdrop */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.96 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="bg-surface border border-border rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-lg overflow-hidden my-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+      />
+
+      {/* Modal Dialog (Glass panel blur permitted on modals) */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+        className="relative w-full max-w-2xl max-h-[90vh] glass-panel rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-border"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Ticket ${ticket.ticketNumber} Details`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-sm font-bold text-text-muted">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border bg-surface/50">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="font-mono text-xs font-bold text-text-muted">
               {ticket.ticketNumber}
             </span>
+            <span className="text-xs text-text-dim">•</span>
             <StatusBadge status={ticket.status} />
             {ticket.overdue && <OverdueBadge />}
             <UrgencyBadge level={ticket.urgencyLevel} score={ticket.urgencyScore} />
           </div>
+
           <button
             type="button"
             onClick={onClose}
-            className="text-text-muted hover:text-text p-1.5 rounded-lg hover:bg-surface-hover transition-colors"
+            className="text-text-muted hover:text-text p-1.5 rounded-lg hover:bg-surface-hover transition-colors focus-ring"
             aria-label="Close modal"
           >
             <XCircleIcon className="w-5 h-5" />
@@ -145,10 +167,10 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
         </div>
 
         {/* Content body */}
-        <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
           {/* Status Progression Track with Spring Dot */}
-          <div className="bg-surface-muted p-4 rounded-xl border border-border-subtle">
-            <div className="text-xs font-semibold text-text-muted mb-3 uppercase tracking-wider">
+          <div className="bento-card p-4 rounded-xl border border-border bg-surface-muted/40">
+            <div className="text-[11px] font-bold text-text-muted mb-3 uppercase tracking-wider">
               Status Progression
             </div>
             <div className="relative flex items-center justify-between px-2">
@@ -195,66 +217,76 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
             </div>
           </div>
 
+          {/* Ticket Title & Metadata */}
           <div>
-            <h2 className="text-lg font-bold text-text">{ticket.title}</h2>
-            <div className="flex items-center gap-3 text-xs text-text-muted mt-1.5 flex-wrap">
-              <span>Category: {ticket.categoryName}</span>
+            <h2 className="text-lg sm:text-xl font-bold text-text tracking-tight">{ticket.title}</h2>
+            <div className="flex items-center gap-3 text-xs text-text-muted mt-2 flex-wrap">
+              <span>Category: <strong className="text-text">{ticket.categoryName}</strong></span>
               <span>•</span>
               <RequestedPriorityBadge priority={ticket.requestedPriority || ticket.priority || 'LOW'} />
               <span>•</span>
-              <span>Creator: {ticket.createdByName || ticket.creatorName || 'Student'}</span>
+              <span>Creator: <strong className="text-text">{ticket.createdByName || ticket.creatorName || 'Student'}</strong></span>
               <span>•</span>
-              <span>Students: {ticket.participantCount || 1}</span>
+              <span>Participants: <strong className="text-text">{ticket.participantCount || 1}</strong></span>
             </div>
             {ticket.assignedAgentName && (
-              <div className="text-xs text-text-muted mt-1">
-                Assigned Agent: <span className="font-medium text-text">{ticket.assignedAgentName}</span>
+              <div className="text-xs text-text-muted mt-1.5">
+                Assigned Agent: <span className="font-semibold text-text">{ticket.assignedAgentName}</span>
               </div>
             )}
             {ticket.incidentTitle && (
               <div className="text-xs text-text-muted mt-1">
-                Linked Incident: <span className="font-medium text-text">{ticket.incidentTitle}</span>
+                Linked Incident: <span className="font-semibold text-danger">{ticket.incidentTitle}</span>
               </div>
             )}
             {ticket.dueAt && (
-              <div className="text-xs text-text-muted mt-1">
-                Due: <span className="font-medium text-text">{new Date(ticket.dueAt).toLocaleString()}</span>
+              <div className="text-xs text-text-muted mt-1 flex items-center gap-1.5">
+                <ClockAlertIcon className="w-3.5 h-3.5 text-text-dim" />
+                <span>Due: <strong className="text-text">{new Date(ticket.dueAt).toLocaleString()}</strong></span>
               </div>
             )}
           </div>
 
-          <div className="bg-surface-muted p-4 rounded-xl border border-border-subtle">
-            <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">
+          {/* Description Tile */}
+          <div className="bento-card p-4 rounded-xl border border-border bg-surface-muted/30">
+            <h4 className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1.5">
               Description
             </h4>
-            <p className="text-sm text-text whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
+            <p className="text-xs sm:text-sm text-text whitespace-pre-wrap leading-relaxed">
+              {ticket.description}
+            </p>
           </div>
 
-          {/* Show urgency reasons to ADMIN and AGENT only */}
+          {/* Urgency Reasons Tile (Dedicated Bento Tile for Privileged Roles) */}
           {showReasons && (
-            <div className="bg-surface-muted p-4 rounded-xl border border-border-subtle">
-              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">
-                System Urgency Reasons (Admin/Agent Only)
-              </h4>
-              <ul className="text-xs text-text-muted space-y-1 list-disc list-inside">
+            <div className="bento-card p-4 rounded-xl border border-amber-300/40 bg-amber-50/30 dark:bg-amber-950/20">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h4 className="text-xs font-bold text-text uppercase tracking-wider flex items-center gap-1.5">
+                  <ClockAlertIcon className="w-4 h-4 text-amber-600" />
+                  <span>Urgency Analysis & SLA Factors</span>
+                </h4>
+                <UrgencyBadge level={ticket.urgencyLevel} score={ticket.urgencyScore} />
+              </div>
+              <ul className="text-xs text-text-muted space-y-1 list-disc list-inside mt-2">
                 {ticket.reasons!.map((reason, idx) => (
-                  <li key={idx}>{reason}</li>
+                  <li key={idx} className="leading-relaxed">
+                    {reason}
+                  </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Role actions */}
           {/* Agent: only the valid next status buttons */}
           {userRole === 'AGENT' && (
-            <div className="p-4 rounded-xl border border-border bg-surface-muted flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-text-muted">Agent Actions:</span>
+            <div className="p-4 rounded-xl border border-border bg-surface-muted/50 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-text-muted">Agent Actions:</span>
               {ticket.status === 'ASSIGNED' && (
                 <button
                   type="button"
                   disabled={isUpdatingStatus}
                   onClick={() => handleUpdateStatus('IN_PROGRESS')}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
+                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-xs focus-ring"
                 >
                   Start Work (IN_PROGRESS)
                 </button>
@@ -264,7 +296,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   type="button"
                   disabled={isUpdatingStatus}
                   onClick={() => handleUpdateStatus('RESOLVED')}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-success text-white hover:opacity-90 disabled:opacity-50 transition-colors shadow-sm"
+                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-success text-white hover:opacity-90 disabled:opacity-50 transition-colors shadow-xs focus-ring"
                 >
                   Mark as RESOLVED
                 </button>
@@ -279,15 +311,15 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
           {/* Admin actions: Assign agent dropdown, Close/Reopen (for RESOLVED tickets) */}
           {userRole === 'ADMIN' && (
-            <div className="p-4 rounded-xl border border-border bg-surface-muted space-y-3">
-              <span className="text-xs font-semibold text-text-muted block">Admin Actions:</span>
+            <div className="p-4 rounded-xl border border-border bg-surface-muted/50 space-y-3">
+              <span className="text-xs font-bold text-text-muted block">Admin Actions:</span>
 
               {/* Assign Agent */}
               <div className="flex items-center gap-2 flex-wrap">
                 <select
                   value={selectedAgentId}
                   onChange={(e) => setSelectedAgentId(e.target.value ? Number(e.target.value) : '')}
-                  className="px-3 py-1.5 text-xs rounded-lg border border-border bg-surface text-text focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="px-3 py-1.5 text-xs rounded-xl border border-border bg-surface text-text focus-ring"
                 >
                   <option value="">Select Agent to Assign...</option>
                   {agents.map((ag) => (
@@ -335,41 +367,28 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
             </div>
           )}
 
-          {/* Comments Section */}
+          {/* OriginKit Comments Timeline */}
           <div className="pt-2">
-            <h4 className="text-sm font-bold text-text flex items-center gap-1.5 mb-3">
+            <h4 className="text-sm font-bold text-text flex items-center gap-1.5 mb-4">
               <MessageSquareIcon className="w-4 h-4 text-text-muted" />
-              Comments ({ticket.comments?.length || 0})
+              <span>Comment Timeline ({ticket.comments?.length || 0})</span>
             </h4>
 
-            {ticket.comments && ticket.comments.length > 0 ? (
-              <div className="space-y-2.5 mb-4">
-                {ticket.comments.map((c) => (
-                  <div
-                    key={c.commentId}
-                    className="p-3.5 bg-surface-muted rounded-xl border border-border-subtle"
-                  >
-                    <div className="flex items-center justify-between text-xs text-text-muted mb-1">
-                      <span className="font-semibold text-text">{c.authorName}</span>
-                      <span>{new Date(c.createdAt).toLocaleString()}</span>
-                    </div>
-                    <p className="text-sm text-text whitespace-pre-wrap leading-relaxed">{c.commentText}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-text-muted mb-4 italic">No comments yet.</p>
-            )}
+            <Timeline
+              items={timelineItems}
+              emptyMessage="No comments posted on this ticket yet."
+              className="mb-4"
+            />
 
             {/* Comment Form (Cannot add comments to CLOSED tickets) */}
             {ticket.status !== 'CLOSED' ? (
-              <form onSubmit={handleAddComment} className="space-y-2.5">
+              <form onSubmit={handleAddComment} className="space-y-2.5 mt-4">
                 <textarea
                   rows={2}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Write a comment..."
-                  className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-border bg-surface text-text placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-accent"
+                  placeholder="Write a comment or update..."
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring"
                   required
                 />
                 <div className="flex justify-end">
@@ -384,7 +403,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                 </div>
               </form>
             ) : (
-              <p className="text-xs text-text-dim italic">
+              <p className="text-xs text-text-dim italic mt-2">
                 This ticket is CLOSED. New comments cannot be added.
               </p>
             )}
