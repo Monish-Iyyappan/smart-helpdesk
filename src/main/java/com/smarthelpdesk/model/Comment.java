@@ -7,6 +7,7 @@ public class Comment {
     private Integer ticketId;
     private Integer userId;
     private String commentText;
+    private String commentType = "GENERAL";
     private LocalDateTime createdAt;
 
     public Comment() {
@@ -16,6 +17,14 @@ public class Comment {
         this.ticketId = ticketId;
         this.userId = userId;
         this.commentText = commentText;
+        this.commentType = "GENERAL";
+    }
+
+    public Comment(Integer ticketId, Integer userId, String commentText, String commentType) {
+        this.ticketId = ticketId;
+        this.userId = userId;
+        this.commentText = commentText;
+        this.commentType = commentType != null ? commentType : "GENERAL";
     }
 
     public Integer getCommentId() {
@@ -48,6 +57,14 @@ public class Comment {
 
     public void setCommentText(String commentText) {
         this.commentText = commentText;
+    }
+
+    public String getCommentType() {
+        return commentType;
+    }
+
+    public void setCommentType(String commentType) {
+        this.commentType = commentType;
     }
 
     public LocalDateTime getCreatedAt() {

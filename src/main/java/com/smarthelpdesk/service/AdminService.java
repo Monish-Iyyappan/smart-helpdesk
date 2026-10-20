@@ -8,6 +8,7 @@ import com.smarthelpdesk.dto.TicketListResponse;
 import com.smarthelpdesk.dto.UrgencySummaryResponse;
 import com.smarthelpdesk.model.Ticket;
 import com.smarthelpdesk.model.User;
+import com.smarthelpdesk.assignment.AssignmentService;
 import com.smarthelpdesk.priority.UrgencyService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,15 +26,17 @@ public class AdminService {
     private final PasswordEncoder passwordEncoder;
     private final DashboardDAO dashboardDAO;
     private final UrgencyService urgencyService;
+    private final AssignmentService assignmentService;
 
     public AdminService(TicketDAO ticketDAO, UserDAO userDAO,
                         PasswordEncoder passwordEncoder, DashboardDAO dashboardDAO,
-                        UrgencyService urgencyService) {
+                        UrgencyService urgencyService, AssignmentService assignmentService) {
         this.ticketDAO = ticketDAO;
         this.userDAO = userDAO;
         this.passwordEncoder = passwordEncoder;
         this.dashboardDAO = dashboardDAO;
         this.urgencyService = urgencyService;
+        this.assignmentService = assignmentService;
     }
 
     private User checkAdmin(Integer adminUserId) {
@@ -49,33 +52,11 @@ public class AdminService {
     }
 
     public Ticket assign(Integer ticketId, Integer adminUserId, Integer agentId) {
-        checkAdmin(adminUserId);
+        return assignmentService.assignTicket(ticketId, adminUserId, agentId, null);
+    }
 
-        if (ticketId == null || agentId == null) {
-            throw new IllegalArgumentException("Ticket ID and agent ID cannot be null");
-        }
-
-        Ticket ticket = ticketDAO.findById(ticketId)
-                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
-
-        if ("CLOSED".equalsIgnoreCase(ticket.getStatus())) {
-            throw new IllegalStateException("CLOSED tickets cannot be assigned");
-        }
-
-        if (!"OPEN".equalsIgnoreCase(ticket.getStatus())) {
-            throw new IllegalStateException("Ticket must be in OPEN status to be assigned. Current status: " + ticket.getStatus());
-        }
-
-        User agent = userDAO.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
-        if (!"AGENT".equalsIgnoreCase(agent.getRole())) {
-            throw new IllegalArgumentException("Target user is not an AGENT (role: " + agent.getRole() + ")");
-        }
-
-        ticketDAO.assign(ticketId, agentId);
-        ticket.setAssignedTo(agentId);
-        ticket.setStatus("ASSIGNED");
-        return ticket;
+    public Ticket assign(Integer ticketId, Integer adminUserId, Integer agentId, String reason) {
+        return assignmentService.assignTicket(ticketId, adminUserId, agentId, reason);
     }
 
     public Ticket close(Integer ticketId, Integer adminUserId) {

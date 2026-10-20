@@ -97,6 +97,13 @@ public class TicketDAO {
         return results.stream().findFirst();
     }
 
+    public Optional<Ticket> findByIdForUpdate(Integer id) {
+        String sql = "SELECT ticket_id, ticket_number, created_by, assigned_to, category_id, incident_id, title, description, priority, status, created_at, updated_at " +
+                     "FROM tickets WHERE ticket_id = ? FOR UPDATE";
+        List<Ticket> results = jdbcTemplate.query(sql, ticketRowMapper, id);
+        return results.stream().findFirst();
+    }
+
     public Optional<Ticket> findByTicketNumber(String ticketNumber) {
         String sql = "SELECT ticket_id, ticket_number, created_by, assigned_to, category_id, incident_id, title, description, priority, status, created_at, updated_at " +
                      "FROM tickets WHERE ticket_number = ?";

@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import com.smarthelpdesk.assignment.AssignmentRecord;
+import com.smarthelpdesk.assignment.AssignmentService;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,11 +37,14 @@ public class AdminController {
     private final AdminService adminService;
     private final IncidentService incidentService;
     private final UrgencyService urgencyService;
+    private final AssignmentService assignmentService;
 
-    public AdminController(AdminService adminService, IncidentService incidentService, UrgencyService urgencyService) {
+    public AdminController(AdminService adminService, IncidentService incidentService,
+                           UrgencyService urgencyService, AssignmentService assignmentService) {
         this.adminService = adminService;
         this.incidentService = incidentService;
         this.urgencyService = urgencyService;
+        this.assignmentService = assignmentService;
     }
 
     @GetMapping("/tickets")
@@ -71,7 +77,7 @@ public class AdminController {
         return ResponseEntity.ok(tickets);
     }
 
-    @PutMapping("/tickets/{ticketId}/assign")
+    @RequestMapping(value = "/tickets/{ticketId}/assign", method = {RequestMethod.POST, RequestMethod.PUT})
     public ResponseEntity<Ticket> assign(
             @PathVariable Integer ticketId,
             @RequestBody AssignTicketRequest request,
@@ -80,8 +86,17 @@ public class AdminController {
             throw new IllegalArgumentException("Request body cannot be null");
         }
         Integer actorUserId = SecurityUtils.getActorUserId(authentication);
-        Ticket ticket = adminService.assign(ticketId, actorUserId, request.agentId());
+        Ticket ticket = assignmentService.assignTicket(ticketId, actorUserId, request.agentId(), request.reason());
         return ResponseEntity.ok(ticket);
+    }
+
+    @GetMapping("/tickets/{ticketId}/assignments")
+    public ResponseEntity<List<AssignmentRecord>> getAssignmentHistory(
+            @PathVariable Integer ticketId,
+            Authentication authentication) {
+        Integer actorUserId = SecurityUtils.getActorUserId(authentication);
+        List<AssignmentRecord> history = assignmentService.getAssignmentHistory(ticketId, actorUserId);
+        return ResponseEntity.ok(history);
     }
 
     @PutMapping("/tickets/{ticketId}/close")

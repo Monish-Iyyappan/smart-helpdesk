@@ -319,6 +319,7 @@ public class TicketService {
                     c.getUserId(),
                     author,
                     c.getCommentText(),
+                    c.getCommentType() != null ? c.getCommentType() : "GENERAL",
                     c.getCreatedAt()
             ));
         }
@@ -340,6 +341,7 @@ public class TicketService {
                 ticket.getStatus(),
                 creatorName,
                 creatorName,
+                ticket.getAssignedTo(),
                 agentName,
                 incidentTitle,
                 participantCount,
