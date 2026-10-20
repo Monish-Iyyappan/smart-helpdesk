@@ -55,7 +55,7 @@ export const LoginPage: React.FC = () => {
 
   const fillCredentials = (roleEmail: string) => {
     setEmail(roleEmail);
-    setPassword('Test@1234');
+    setPassword('');
     setIsRegister(false);
     setErrorMsg('');
   };
@@ -245,10 +245,7 @@ export const LoginPage: React.FC = () => {
             </div>
           </form>
 
-          {/* Test Password Hint */}
-          <div className="mt-6 pt-4 border-t border-border text-center text-[11px] text-text-dim">
-            Default Test Password: <span className="font-mono font-bold text-text-muted">Test@1234</span>
-          </div>
+
         </motion.div>
       </div>
 

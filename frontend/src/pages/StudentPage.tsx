@@ -159,7 +159,9 @@ export const StudentPage: React.FC = () => {
   const resolvedCount = tickets.filter(
     (t) => t.status === 'RESOLVED' || t.status === 'CLOSED'
   ).length;
-  const overdueCount = tickets.filter((t) => t.overdue).length;
+  const overdueCount = tickets.filter(
+    (t) => t.overdue && t.status !== 'RESOLVED' && t.status !== 'CLOSED'
+  ).length;
 
   return (
     <Shell
@@ -211,7 +213,7 @@ export const StudentPage: React.FC = () => {
       />
 
       {/* Bento Stat Tiles */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 min-w-0">
         <BentoStatCard
           label="Total Tickets"
           value={tickets.length}

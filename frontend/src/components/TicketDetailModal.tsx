@@ -39,6 +39,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
   const isPrivileged = userRole === 'ADMIN' || userRole === 'AGENT';
   const showReasons = isPrivileged && ticket.reasons && ticket.reasons.length > 0;
+  const isOverdue = Boolean(ticket.overdue && ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED');
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,20 +140,30 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
         transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-        className="relative w-full max-w-2xl max-h-[90vh] glass-panel rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-border"
+        className={`relative w-full max-w-2xl max-h-[90vh] glass-panel rounded-2xl shadow-2xl flex flex-col overflow-hidden border ${
+          isOverdue
+            ? 'ticket-card-overdue border-overdue-border shadow-[0_0_24px_-4px_var(--color-overdue-glow)]'
+            : 'border-border'
+        }`}
         role="dialog"
         aria-modal="true"
         aria-label={`Ticket ${ticket.ticketNumber} Details`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border bg-surface/50">
+        <div
+          className={`flex items-center justify-between p-4 sm:p-5 border-b ${
+            isOverdue
+              ? 'border-overdue-border/50 bg-overdue-bg/40'
+              : 'border-border bg-surface/50'
+          }`}
+        >
           <div className="flex items-center gap-2.5 flex-wrap">
             <span className="font-mono text-xs font-bold text-text-muted">
               {ticket.ticketNumber}
             </span>
             <span className="text-xs text-text-dim">•</span>
             <StatusBadge status={ticket.status} />
-            {ticket.overdue && <OverdueBadge />}
+            {isOverdue && <OverdueBadge />}
             <UrgencyBadge level={ticket.urgencyLevel} score={ticket.urgencyScore} />
           </div>
 
@@ -168,6 +179,20 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
         {/* Content body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+          {/* Overdue Alert Banner if overdue */}
+          {isOverdue && (
+            <div className="p-3.5 rounded-xl border border-overdue-border bg-overdue-bg/60 text-overdue-text flex items-center gap-2.5 text-xs font-semibold">
+              <ClockAlertIcon className="w-4 h-4 text-overdue-text shrink-0" />
+              <div className="flex-1">
+                <span>This ticket is currently OVERDUE for SLA resolution.</span>
+                {ticket.dueAt && (
+                  <span className="block sm:inline sm:ml-1 font-normal opacity-90">
+                    SLA deadline was {new Date(ticket.dueAt).toLocaleString()}.
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           {/* Status Progression Track with Spring Dot */}
           <div className="bento-card p-4 rounded-xl border border-border bg-surface-muted/40">
             <div className="text-[11px] font-bold text-text-muted mb-3 uppercase tracking-wider">

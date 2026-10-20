@@ -4,7 +4,8 @@ import { useAuth } from '../auth/AuthContext';
 import { LogOutIcon, MenuIcon, XCircleIcon, SearchIcon, CommandIcon } from './Icons';
 import { ThemeToggle } from './ThemeToggle';
 import { ToastContainer } from './Toast';
-import { Sidebar, SidebarBody, SidebarLink } from './ui/sidebar';
+import type { User } from '../api/types';
+import { Sidebar, SidebarBody, SidebarLink, useSidebar } from './ui/sidebar';
 import { CommandPalette, type CommandItem } from './ui/command-palette';
 
 export interface ShellTab {
@@ -21,6 +22,169 @@ export interface ShellProps {
   onTabChange?: (tabId: string) => void;
   headerActions?: React.ReactNode;
 }
+
+interface DesktopSidebarContentProps {
+  user: User | null;
+  initials: string;
+  tabs?: ShellTab[];
+  activeTab?: string;
+  onTabChange?: (tabId: string) => void;
+  setIsPaletteOpen: (open: boolean) => void;
+  logout: () => void;
+}
+
+const DesktopSidebarContent: React.FC<DesktopSidebarContentProps> = ({
+  user,
+  initials,
+  tabs,
+  activeTab,
+  onTabChange,
+  setIsPaletteOpen,
+  logout,
+}) => {
+  const { open } = useSidebar();
+
+  return (
+    <SidebarBody className="justify-between gap-4 h-full">
+      {/* Top Section (Fixed at top of sidebar) */}
+      <div className="shrink-0 flex flex-col">
+        {/* Logo / Header */}
+        <div
+          className={`flex items-center ${
+            open ? 'gap-3 px-2' : 'justify-center px-0'
+          } py-2 border-b border-border/60 pb-4 mb-4 overflow-hidden`}
+        >
+          <div
+            className="w-9 h-9 rounded-xl bg-primary text-primary-text font-bold text-sm flex items-center justify-center shrink-0 shadow-sm"
+            title="Smart Helpdesk"
+          >
+            SH
+          </div>
+          {open && (
+            <div className="flex flex-col overflow-hidden min-w-0">
+              <span
+                className="font-bold text-sm text-text tracking-tight truncate"
+                title="Smart Helpdesk"
+              >
+                Smart Helpdesk
+              </span>
+              {user && (
+                <span
+                  className="text-[10px] uppercase font-bold tracking-wider text-primary truncate"
+                  title={`${user.role} Portal`}
+                >
+                  {user.role} Portal
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Quick Command Trigger Pill */}
+        <button
+          type="button"
+          onClick={() => setIsPaletteOpen(true)}
+          className={`flex items-center ${
+            open ? 'justify-between px-3' : 'justify-center px-1'
+          } py-2 mb-3 rounded-xl border border-border bg-surface-muted/60 hover:bg-surface-hover text-text-muted hover:text-text transition-colors text-xs focus-ring`}
+          title="Search commands (Ctrl+K)"
+          aria-label="Search commands (Ctrl+K)"
+        >
+          <div className="flex items-center gap-2 truncate">
+            <SearchIcon className="w-3.5 h-3.5 shrink-0" />
+            {open && <span className="truncate">Commands</span>}
+          </div>
+          {open && (
+            <kbd className="text-[10px] font-mono px-1 py-0.5 rounded bg-surface border border-border text-text-dim shrink-0">
+              ⌘K
+            </kbd>
+          )}
+        </button>
+      </div>
+
+      {/* Navigation Links (Scrolls internally if taller than screen) */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 space-y-1 py-1 custom-scrollbar">
+        {tabs && tabs.length > 0 ? (
+          tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <SidebarLink
+                key={tab.id}
+                label={tab.label}
+                active={isActive}
+                count={tab.count}
+                onClick={() => onTabChange?.(tab.id)}
+                icon={
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      isActive ? 'bg-primary-text' : 'bg-accent/60'
+                    }`}
+                  />
+                }
+              />
+            );
+          })
+        ) : (
+          open && (
+            <div className="px-2 py-4">
+              <div className="p-3 rounded-xl bg-surface-muted border border-border">
+                <div className="text-xs font-bold text-text capitalize">
+                  {user?.role.toLowerCase() || 'User'}
+                </div>
+                <div className="text-[11px] text-text-muted mt-0.5">Workspace Active</div>
+              </div>
+            </div>
+          )
+        )}
+      </div>
+
+      {/* Desktop Sidebar Bottom with Profile & Theme (Fixed at bottom of sidebar) */}
+      <div className="border-t border-border pt-4 space-y-3 min-w-0 shrink-0">
+        {user && (
+          <div
+            className={`flex items-center ${
+              open ? 'gap-2.5 px-1' : 'justify-center px-0'
+            }`}
+            title={`${user.name} (${user.email})`}
+          >
+            <div className="w-8 h-8 rounded-full bg-secondary text-secondary-text font-bold text-xs flex items-center justify-center shrink-0">
+              {initials}
+            </div>
+            {open && (
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <div className="text-xs font-bold text-text truncate" title={user.name}>
+                  {user.name}
+                </div>
+                <div className="text-[11px] text-text-muted truncate" title={user.email}>
+                  {user.email}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div
+          className={`flex items-center ${
+            open ? 'justify-between' : 'flex-col gap-2 justify-center'
+          } pt-1`}
+        >
+          <ThemeToggle />
+          {user && (
+            <button
+              type="button"
+              onClick={logout}
+              className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-surface-hover transition-colors focus-ring"
+              title="Logout"
+              aria-label="Logout"
+            >
+              <LogOutIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    </SidebarBody>
+  );
+};
 
 export const Shell: React.FC<ShellProps> = ({
   children,
@@ -74,7 +238,7 @@ export const Shell: React.FC<ShellProps> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-bg text-text flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen md:h-screen md:overflow-hidden bg-bg text-text flex flex-col md:flex-row font-sans w-full">
       {/* Mobile Top Navbar */}
       <header className="md:hidden sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-border shadow-xs px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -164,7 +328,7 @@ export const Shell: React.FC<ShellProps> = ({
 
               {/* Navigation items for tabs */}
               {tabs && tabs.length > 0 && (
-                <div className="flex-1 py-4 space-y-1 overflow-y-auto">
+                <div className="flex-1 py-4 space-y-1 overflow-y-auto custom-scrollbar">
                   <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-wider text-text-dim">
                     Navigation
                   </div>
@@ -226,9 +390,6 @@ export const Shell: React.FC<ShellProps> = ({
                     <span>Logout</span>
                   </button>
                 </div>
-                <div className="px-2 pt-2 text-[10px] text-text-dim text-center border-t border-border/50">
-                  UI motion by Skiper UI
-                </div>
               </div>
             </motion.aside>
           </>
@@ -237,115 +398,21 @@ export const Shell: React.FC<ShellProps> = ({
 
       {/* Desktop Aceternity UI Sidebar */}
       <Sidebar>
-        <SidebarBody className="justify-between gap-6">
-          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            {/* Logo / Header */}
-            <div className="flex items-center gap-3 py-2 px-2 border-b border-border/60 pb-4 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-primary text-primary-text font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
-                SH
-              </div>
-              <div className="flex flex-col overflow-hidden">
-                <span className="font-bold text-sm text-text tracking-tight truncate">
-                  Smart Helpdesk
-                </span>
-                {user && (
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-primary truncate">
-                    {user.role} Portal
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Quick Command Trigger Pill */}
-            <button
-              type="button"
-              onClick={() => setIsPaletteOpen(true)}
-              className="flex items-center justify-between gap-2 px-3 py-2 mb-3 rounded-xl border border-border bg-surface-muted/60 hover:bg-surface-hover text-text-muted hover:text-text transition-colors text-xs focus-ring"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <SearchIcon className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Commands</span>
-              </div>
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1 py-0.5 rounded bg-surface border border-border text-text-dim">
-                ⌘K
-              </kbd>
-            </button>
-
-            {/* Navigation Links */}
-            <div className="space-y-1">
-              {tabs && tabs.length > 0 ? (
-                tabs.map((tab) => {
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <SidebarLink
-                      key={tab.id}
-                      label={tab.label}
-                      active={isActive}
-                      count={tab.count}
-                      onClick={() => onTabChange?.(tab.id)}
-                      icon={
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            isActive ? 'bg-primary-text' : 'bg-accent/60'
-                          }`}
-                        />
-                      }
-                    />
-                  );
-                })
-              ) : (
-                <div className="px-2 py-4">
-                  <div className="p-3 rounded-xl bg-surface-muted border border-border">
-                    <div className="text-xs font-bold text-text capitalize">
-                      {user?.role.toLowerCase() || 'User'}
-                    </div>
-                    <div className="text-[11px] text-text-muted mt-0.5">Workspace Active</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Desktop Sidebar Bottom with Profile & Theme */}
-          <div className="border-t border-border pt-4 space-y-3">
-            {user && (
-              <div className="flex items-center gap-2.5 px-1">
-                <div className="w-8 h-8 rounded-full bg-secondary text-secondary-text font-bold text-xs flex items-center justify-center shrink-0">
-                  {initials}
-                </div>
-                <div className="min-w-0 flex-1 overflow-hidden">
-                  <div className="text-xs font-bold text-text truncate">{user.name}</div>
-                  <div className="text-[11px] text-text-muted truncate">{user.email}</div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-1">
-              <ThemeToggle />
-              {user && (
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-surface-hover transition-colors focus-ring"
-                  title="Logout"
-                  aria-label="Logout"
-                >
-                  <LogOutIcon className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            <div className="text-[10px] text-text-dim text-center pt-1 border-t border-border/40">
-              UI motion by Skiper UI
-            </div>
-          </div>
-        </SidebarBody>
+        <DesktopSidebarContent
+          user={user}
+          initials={initials}
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          setIsPaletteOpen={setIsPaletteOpen}
+          logout={logout}
+        />
       </Sidebar>
 
-      {/* Main Workspace Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Workspace Area: Only the main content area scrolls on desktop */}
+      <div className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-y-auto md:overflow-x-hidden">
         {/* Sticky Translucent Top Bar */}
-        <header className="sticky top-0 z-20 bg-surface/85 backdrop-blur-md border-b border-border px-4 sm:px-8 py-3.5 shadow-xs">
+        <header className="sticky top-0 z-20 bg-surface/85 backdrop-blur-md border-b border-border px-4 sm:px-8 py-3.5 shadow-xs shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
               {title && (
@@ -374,7 +441,7 @@ export const Shell: React.FC<ShellProps> = ({
         </header>
 
         {/* Animated Page Transition Wrapper */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 min-w-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab || title || 'main-page'}
@@ -389,10 +456,9 @@ export const Shell: React.FC<ShellProps> = ({
           </AnimatePresence>
         </main>
 
-        {/* Footer Credit */}
-        <footer className="mt-auto py-4 px-6 border-t border-border bg-surface-muted/30 text-center text-[11px] text-text-dim">
-          <span>Smart Helpdesk Portal • Signal Desk SaaS System • </span>
-          <span className="font-medium text-text-muted">UI motion by Skiper UI</span>
+        {/* Footer */}
+        <footer className="mt-auto py-4 px-6 border-t border-border bg-surface-muted/30 text-center text-[11px] text-text-dim shrink-0">
+          <span>Smart Helpdesk Portal • Signal Desk SaaS System</span>
         </footer>
       </div>
 

@@ -335,7 +335,7 @@ export const AdminPage: React.FC = () => {
       {activeTab === 'STATS' && (
         <div className="space-y-6">
           {/* Key Metric Cards with BentoStatCards and Sparklines */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
             <BentoStatCard
               label="Total Tickets"
               value={stats?.totalTickets || allTickets.length}

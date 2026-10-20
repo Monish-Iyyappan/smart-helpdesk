@@ -67,11 +67,12 @@
   --color-urgency-urgent-text: #7f1d1d;
   --color-urgency-urgent-border: #fca5a5;
 
-  /* Overdue Badge & Pulsing Ring */
-  --color-overdue-bg: #ffe4e6;
-  --color-overdue-text: #881337;
-  --color-overdue-border: #fda4af;
-  --color-overdue-glow: rgba(225, 29, 72, 0.45);
+  /* Overdue Badge, Card & Pulsing Ring (Light: strong red with soft red background) */
+  --color-overdue-card-bg: #fff1f2;
+  --color-overdue-bg: #fee2e2;
+  --color-overdue-text: #7f1d1d;
+  --color-overdue-border: #dc2626;
+  --color-overdue-glow: rgba(220, 38, 38, 0.35);
 
   /* Ticket Statuses */
   --color-status-open-bg: #eef2ff;
@@ -191,11 +192,12 @@
   --color-urgency-urgent-text: #fecaca;
   --color-urgency-urgent-border: #7f1d1d;
 
-  /* Overdue Badge & Glow (Dark) */
-  --color-overdue-bg: #4c0519;
-  --color-overdue-text: #fecdd3;
-  --color-overdue-border: #881337;
-  --color-overdue-glow: rgba(244, 63, 94, 0.45);
+  /* Overdue Badge, Card & Glow (Dark: bright neon red border/glow on dark red tint) */
+  --color-overdue-card-bg: #22040b;
+  --color-overdue-bg: #450a0a;
+  --color-overdue-text: #fecaca;
+  --color-overdue-border: #ff2255;
+  --color-overdue-glow: rgba(255, 34, 85, 0.55);
 
   /* Ticket Statuses (Dark) */
   --color-status-open-bg: #1e1b4b;
@@ -309,6 +311,31 @@ body {
 
 .animate-overdue-glow {
   animation: overdue-ring-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ticket-card-overdue {
+  background-color: var(--color-overdue-card-bg) !important;
+  border-color: var(--color-overdue-border) !important;
+}
+
+/* Subtle Custom Scrollbar for internal scroll containers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-dim);
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -44,7 +44,7 @@ All components used are free, open-source (MIT licensed), and contain no paid, P
 ## 3. Skiper UI
 - **Website**: [skiper-ui.com](https://skiper-ui.com)
 - **License**: MIT License
-- **Required Credit**: *"UI motion by Skiper UI"* (placed in layout footers and command palette).
+- **License Note**: MIT License
 - **Components Used**:
   8. **Command Palette** (`frontend/src/components/ui/command-palette.tsx`)
      - Source: [https://skiper-ui.com/components/command-palette](https://skiper-ui.com/components/command-palette)

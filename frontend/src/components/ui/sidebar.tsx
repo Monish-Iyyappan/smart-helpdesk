@@ -142,26 +142,42 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({
   className = '',
 }) => {
   const { open } = useSidebar();
+  const tooltip = typeof count === 'number' ? `${label} (${count})` : label;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors duration-fast focus-ring ${
+      className={`relative w-full flex items-center ${
+        open ? 'gap-3 px-3' : 'justify-center px-1'
+      } py-2.5 rounded-xl text-xs font-semibold transition-colors duration-fast focus-ring ${
         active
           ? 'bg-primary text-primary-text shadow-sm'
           : 'text-text-muted hover:text-text hover:bg-surface-hover'
       } ${className}`}
-      title={label}
+      title={tooltip}
+      aria-label={tooltip}
     >
-      <span className="shrink-0">{icon}</span>
+      <span className="shrink-0 relative">
+        {icon}
+        {typeof count === 'number' && count > 0 && !open && (
+          <span
+            className={`absolute -top-1.5 -right-2 px-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full text-[9px] font-bold ${
+              active ? 'bg-surface text-primary' : 'bg-primary text-primary-text'
+            }`}
+          >
+            {count > 99 ? '99+' : count}
+          </span>
+        )}
+      </span>
       <motion.span
         animate={{
           display: open ? 'inline-block' : 'none',
           opacity: open ? 1 : 0,
         }}
         transition={{ duration: 0.15 }}
-        className="truncate flex-1 text-left whitespace-pre"
+        className="truncate flex-1 text-left whitespace-nowrap min-w-0"
+        title={label}
       >
         {label}
       </motion.span>
@@ -170,6 +186,7 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({
           className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
             active ? 'bg-surface text-primary' : 'bg-surface-muted text-text-muted'
           }`}
+          title={`${count} items`}
         >
           {count}
         </span>

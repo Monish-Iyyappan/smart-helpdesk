@@ -2,7 +2,6 @@
  * Skiper UI Command Palette Component
  * Source: https://skiper-ui.com/components/command-palette
  * License: MIT
- * "UI motion by Skiper UI"
  * Adapted for Signal Desk tokens, glass styling, and motion/react.
  */
 
@@ -185,7 +184,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                 <span>↵ Select</span>
                 <span>ESC Close</span>
               </div>
-              <span className="text-[10px] text-text-dim">UI motion by Skiper UI</span>
             </div>
           </motion.div>
         </div>

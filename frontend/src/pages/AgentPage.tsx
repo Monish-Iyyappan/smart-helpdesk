@@ -84,7 +84,7 @@ export const AgentPage: React.FC = () => {
     }
 
     if (overdueOnly) {
-      result = result.filter((t) => t.overdue);
+      result = result.filter((t) => t.overdue && t.status !== 'RESOLVED' && t.status !== 'CLOSED');
     }
 
     if (sortBy === 'URGENCY') {
@@ -106,7 +106,9 @@ export const AgentPage: React.FC = () => {
   const assignedCount = tickets.filter((t) => t.status === 'ASSIGNED').length;
   const progressCount = tickets.filter((t) => t.status === 'IN_PROGRESS').length;
   const resolvedCount = tickets.filter((t) => t.status === 'RESOLVED').length;
-  const overdueCount = tickets.filter((t) => t.overdue).length;
+  const overdueCount = tickets.filter(
+    (t) => t.overdue && t.status !== 'RESOLVED' && t.status !== 'CLOSED'
+  ).length;
 
   // Grouping for Kanban columns
   const kanbanColumns = useMemo(() => {
@@ -213,7 +215,7 @@ export const AgentPage: React.FC = () => {
       />
 
       {/* Overview Cards with Bento Stat Tiles & Sparklines */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 min-w-0">
         <BentoStatCard
           label="Assigned Queue"
           value={assignedCount}

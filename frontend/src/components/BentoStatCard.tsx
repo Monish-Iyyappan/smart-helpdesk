@@ -25,14 +25,17 @@ export const BentoStatCard: React.FC<BentoStatCardProps> = ({
 }) => {
   return (
     <div
-      className={`bento-card p-5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all ${
+      className={`bento-card p-4 sm:p-5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all min-w-0 overflow-hidden ${
         isAlert
-          ? 'border-danger-border bg-danger-bg/20'
+          ? 'ticket-card-overdue'
           : 'bg-surface border-border'
       } ${className}`}
     >
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-text-muted">
+      <div className="flex items-center justify-between gap-2 mb-2 min-w-0">
+        <span
+          className="text-xs font-bold uppercase tracking-wider text-text-muted truncate flex-1 min-w-0"
+          title={label}
+        >
           {label}
         </span>
         {icon && (
@@ -46,12 +49,12 @@ export const BentoStatCard: React.FC<BentoStatCardProps> = ({
         )}
       </div>
 
-      <div className="flex items-baseline justify-between gap-3 my-1">
-        <div className="text-2xl sm:text-3xl font-extrabold text-text tracking-tight font-sans">
+      <div className="flex items-baseline justify-between gap-2 my-1 min-w-0">
+        <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-text tracking-tight font-sans truncate min-w-0">
           <CountUp value={value} />
         </div>
         {sparklineData && (
-          <div className="shrink-0">
+          <div className="shrink-0 hidden xs:block">
             <Sparkline
               data={sparklineData}
               color={isAlert ? 'var(--color-danger)' : sparklineColor}
@@ -63,7 +66,10 @@ export const BentoStatCard: React.FC<BentoStatCardProps> = ({
       </div>
 
       {description && (
-        <div className="mt-2 text-[11px] text-text-dim truncate">
+        <div
+          className="mt-2 text-[11px] text-text-dim truncate min-w-0"
+          title={description}
+        >
           {description}
         </div>
       )}
