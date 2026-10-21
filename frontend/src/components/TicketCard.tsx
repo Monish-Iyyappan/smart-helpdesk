@@ -93,6 +93,11 @@ export const TicketCard: React.FC<TicketCardProps> = ({
           <div className="flex items-center gap-3 flex-wrap">
             {/* Student's chosen priority shown strictly as small 'Requested: X' */}
             <RequestedPriorityBadge priority={ticket.requestedPriority || ticket.priority || 'LOW'} />
+            {ticket.assignedAgentName && (
+              <span className="text-[11px] font-medium text-text-muted">
+                Agent: <span className="text-text font-semibold">{ticket.assignedAgentName}</span>
+              </span>
+            )}
             {ticket.createdAt && (
               <span className="text-[11px] text-text-dim">
                 {new Date(ticket.createdAt).toLocaleDateString()}

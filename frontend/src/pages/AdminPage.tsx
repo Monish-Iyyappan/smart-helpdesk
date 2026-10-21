@@ -22,6 +22,7 @@ import { BentoStatCard } from '../components/BentoStatCard';
 import { GreetingHeader } from '../components/GreetingHeader';
 import { EmptyState } from '../components/EmptyState';
 import { CardSkeleton } from '../components/ui/skeleton';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 type AdminTab = 'STATS' | 'ALL_TICKETS' | 'UNASSIGNED' | 'OVERDUE' | 'INCIDENTS' | 'AGENTS' | 'CLOSED_LOG';
 
@@ -71,6 +72,82 @@ export const AdminPage: React.FC = () => {
   const [linkTicketId, setLinkTicketId] = useState<number | ''>('');
   const [isLinking, setIsLinking] = useState(false);
 
+  // Incident Selection & Tickets
+  const [selectedIncident, setSelectedIncident] = useState<IncidentItem | null>(null);
+  const [incidentTickets, setIncidentTickets] = useState<TicketItem[]>([]);
+  const [isLoadingIncidentTickets, setIsLoadingIncidentTickets] = useState(false);
+  const [incidentTicketsError, setIncidentTicketsError] = useState<string | null>(null);
+
+  const loadIncidentTickets = async (incidentId: number) => {
+    setIsLoadingIncidentTickets(true);
+    setIncidentTicketsError(null);
+    try {
+      const res: any = await api.incidents.getTickets(incidentId);
+      let list: TicketItem[] = [];
+      if (Array.isArray(res)) {
+        list = res;
+      } else if (res && Array.isArray(res.tickets)) {
+        list = res.tickets;
+      } else {
+        list = (allTickets || []).filter((t) => t.incidentId === incidentId);
+      }
+
+      const agentMap = new Map(agents.map((a) => [a.userId, a.name]));
+      const allTicketMap = new Map(allTickets.map((t) => [t.ticketId, t]));
+
+      const mapped = list.map((t: any) => {
+        const fullTicket = allTicketMap.get(t.ticketId) || {};
+        const agentName =
+          t.assignedAgentName ||
+          t.assignedAgent ||
+          (t.assignedTo ? agentMap.get(t.assignedTo) : null) ||
+          (fullTicket as any).assignedAgentName;
+        return {
+          ...fullTicket,
+          ...t,
+          ticketNumber: t.ticketNumber || (fullTicket as any).ticketNumber || `HD-${t.ticketId}`,
+          categoryName: t.categoryName || (fullTicket as any).categoryName || 'General',
+          assignedAgentName: agentName,
+          urgencyLevel: t.urgencyLevel || (fullTicket as any).urgencyLevel || 'LOW',
+          urgencyScore: t.urgencyScore ?? (fullTicket as any).urgencyScore ?? 0,
+          overdue: typeof t.overdue === 'boolean' ? t.overdue : Boolean((fullTicket as any).overdue),
+          requestedPriority: t.requestedPriority || t.priority || (fullTicket as any).requestedPriority || 'LOW',
+        };
+      });
+      setIncidentTickets(mapped);
+    } catch (err: any) {
+      const fallback = (allTickets || []).filter((t) => t.incidentId === incidentId);
+      if (fallback.length > 0) {
+        const agentMap = new Map(agents.map((a) => [a.userId, a.name]));
+        const mappedFallback = fallback.map((t) => ({
+          ...t,
+          categoryName: t.categoryName || 'General',
+          assignedAgentName: t.assignedAgentName || (t.assignedTo ? agentMap.get(t.assignedTo) : null),
+          urgencyLevel: t.urgencyLevel || 'LOW',
+          urgencyScore: t.urgencyScore ?? 0,
+          requestedPriority: t.requestedPriority || t.priority || 'LOW',
+        }));
+        setIncidentTickets(mappedFallback);
+      } else {
+        setIncidentTickets([]);
+        setIncidentTicketsError(err?.message || 'Failed to load tickets for this incident');
+      }
+    } finally {
+      setIsLoadingIncidentTickets(false);
+    }
+  };
+
+  const handleSelectIncident = (inc: IncidentItem) => {
+    if (selectedIncident?.incidentId === inc.incidentId) {
+      setSelectedIncident(null);
+      setIncidentTickets([]);
+      setIncidentTicketsError(null);
+    } else {
+      setSelectedIncident(inc);
+      loadIncidentTickets(inc.incidentId);
+    }
+  };
+
   const loadAllData = async () => {
     setIsLoading(true);
     try {
@@ -84,13 +161,42 @@ export const AdminPage: React.FC = () => {
         api.admin.closedTickets().catch(() => []),
       ]);
 
+      const agentMap = new Map((agList || []).map((a) => [a.userId, a.name]));
+      const enrichedAllTickets = (aTickets || []).map((t) => ({
+        ...t,
+        assignedAgentName: t.assignedAgentName || (t.assignedTo ? agentMap.get(t.assignedTo) : null),
+      }));
+
+      const computedIncList = (incList || []).map((inc) => {
+        if (typeof inc.ticketCount === 'number' && typeof inc.openTicketCount === 'number') {
+          return inc;
+        }
+        const linked = (enrichedAllTickets || []).filter((t) => t.incidentId === inc.incidentId);
+        const openCount = linked.filter((t) => t.status !== 'RESOLVED' && t.status !== 'CLOSED').length;
+        return {
+          ...inc,
+          ticketCount: linked.length,
+          openTicketCount: openCount,
+        };
+      });
+
       setStats(sData);
-      setAllTickets(aTickets);
-      setUnassignedTickets(uTickets);
-      setOverdueTickets(oTickets);
-      setIncidents(incList);
+      setAllTickets(enrichedAllTickets);
+      setUnassignedTickets((uTickets || []).map((t) => ({ ...t, assignedAgentName: null })));
+      setOverdueTickets((oTickets || []).map((t) => ({
+        ...t,
+        assignedAgentName: t.assignedAgentName || (t.assignedTo ? agentMap.get(t.assignedTo) : null),
+      })));
+      setIncidents(computedIncList);
       setAgents(agList);
       setClosedLog(cLog || []);
+
+      if (selectedIncident) {
+        const updated = computedIncList.find((i) => i.incidentId === selectedIncident.incidentId);
+        if (updated) {
+          setSelectedIncident(updated);
+        }
+      }
     } catch {
       // Handled by global toast
     } finally {
@@ -119,6 +225,9 @@ export const AdminPage: React.FC = () => {
       } catch {
         // Handled
       }
+    }
+    if (selectedIncident) {
+      loadIncidentTickets(selectedIncident.incidentId);
     }
     loadAllData();
     api.admin.closedTickets().then((cLog) => setClosedLog(cLog || [])).catch(() => {});
@@ -182,13 +291,17 @@ export const AdminPage: React.FC = () => {
     if (!linkIncidentId || !linkTicketId) return;
 
     setIsLinking(true);
+    const targetIncId = Number(linkIncidentId);
     try {
-      await api.admin.linkTicket(Number(linkIncidentId), Number(linkTicketId));
+      await api.admin.linkTicket(targetIncId, Number(linkTicketId));
       showToast('Ticket linked to incident successfully!', 'success');
       setShowLinkIncidentModal(false);
       setLinkIncidentId('');
       setLinkTicketId('');
       loadAllData();
+      if (selectedIncident && selectedIncident.incidentId === targetIncId) {
+        loadIncidentTickets(targetIncId);
+      }
     } catch {
       // Handled by global toast
     } finally {
@@ -578,7 +691,7 @@ export const AdminPage: React.FC = () => {
             <div>
               <h3 className="text-sm font-bold text-text">Campus Incidents</h3>
               <p className="text-xs text-text-muted mt-0.5">
-                Major campus events driving ticket urgency calculation and affected student counts.
+                Major campus events driving ticket grouping, SLAs, and urgency calculation.
               </p>
             </div>
             <button
@@ -599,48 +712,135 @@ export const AdminPage: React.FC = () => {
               </p>
             </div>
           ) : (
-            <motion.div
-              layout
-              initial="hidden"
-              animate="show"
-              variants={{
-                hidden: { opacity: 0 },
-                show: {
-                  opacity: 1,
-                  transition: { staggerChildren: 0.05 },
-                },
-              }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-3"
-            >
-              {incidents.map((inc) => (
-                <motion.div
-                  key={inc.incidentId}
-                  layout
-                  variants={{
-                    hidden: { opacity: 0, y: 10 },
-                    show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
-                  }}
-                  className="p-4 bg-surface border border-border rounded-xl shadow-xs"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-xs font-semibold text-text-muted">
-                      INC-{inc.incidentId}
-                    </span>
-                    <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-urgency-urgent-bg text-urgency-urgent-text border border-urgency-urgent-border">
-                      {inc.severity}
-                    </span>
-                  </div>
-                  <h4 className="text-base font-bold text-text">{inc.title}</h4>
-                  <p className="text-xs text-text-muted mt-1 line-clamp-2">{inc.description}</p>
-                  <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-border-subtle mt-3">
-                    <span>Location: {inc.location}</span>
-                    <span className="font-semibold text-text">
-                      Affected Students: {inc.affectedStudentCount ?? 0}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
+            <div className={`grid grid-cols-1 ${selectedIncident ? 'lg:grid-cols-12 gap-6 items-start' : 'gap-4'}`}>
+              {/* Incident Column */}
+              <div className={selectedIncident ? 'lg:col-span-5 space-y-3' : 'grid grid-cols-1 md:grid-cols-2 gap-3'}>
+                {incidents.map((inc) => {
+                  const isSelected = selectedIncident?.incidentId === inc.incidentId;
+                  return (
+                    <motion.div
+                      key={inc.incidentId}
+                      layout
+                      variants={{
+                        hidden: { opacity: 0, y: 10 },
+                        show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+                      }}
+                      onClick={() => handleSelectIncident(inc)}
+                      className={`p-4 bg-surface border rounded-xl shadow-xs cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-primary ring-2 ring-primary/40 shadow-md bg-surface-hover'
+                          : 'border-border hover:border-accent hover:shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-semibold text-text-muted">
+                            INC-{inc.incidentId}
+                          </span>
+                          <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-urgency-urgent-bg text-urgency-urgent-text border border-urgency-urgent-border">
+                            {inc.severity}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-surface-muted text-text border border-border"
+                            title="Total Tickets"
+                          >
+                            {inc.ticketCount ?? 0} {inc.ticketCount === 1 ? 'ticket' : 'tickets'}
+                          </span>
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-status-progress-bg text-status-progress-text"
+                            title="Open Tickets"
+                          >
+                            {inc.openTicketCount ?? 0} open
+                          </span>
+                        </div>
+                      </div>
+                      <h4 className="text-base font-bold text-text">{inc.title}</h4>
+                      <p className="text-xs text-text-muted mt-1 line-clamp-2">{inc.description}</p>
+                      <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-border-subtle mt-3">
+                        <span>Location: {inc.location}</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Linked Tickets Panel (Beside incident column on lg screens, below on smaller screens) */}
+              {selectedIncident && (
+                <div className="lg:col-span-7">
+                  <ErrorBoundary key={selectedIncident.incidentId}>
+                    <div className="p-4 bg-surface border border-border rounded-xl shadow-xs space-y-4 sticky top-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border-subtle">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-mono text-xs font-semibold text-text-muted">
+                              INC-{selectedIncident.incidentId}
+                            </span>
+                            <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-urgency-urgent-bg text-urgency-urgent-text border border-urgency-urgent-border">
+                              {selectedIncident.severity}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-surface-muted text-text border border-border">
+                              {selectedIncident.ticketCount ?? 0} {selectedIncident.ticketCount === 1 ? 'ticket' : 'tickets'}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-status-progress-bg text-status-progress-text">
+                              {selectedIncident.openTicketCount ?? 0} open
+                            </span>
+                          </div>
+                          <h4 className="text-base font-bold text-text">{selectedIncident.title}</h4>
+                          <p className="text-xs text-text-muted mt-0.5">{selectedIncident.description}</p>
+                          <p className="text-xs text-text-dim mt-1">
+                            Location: <span className="text-text-muted">{selectedIncident.location}</span>
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedIncident(null);
+                            setIncidentTickets([]);
+                            setIncidentTicketsError(null);
+                          }}
+                          className="self-start sm:self-center px-2.5 py-1 text-xs font-medium rounded-md border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                        >
+                          Deselect
+                        </button>
+                      </div>
+
+                      <div>
+                        <h5 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3">
+                          Linked Tickets ({incidentTickets ? incidentTickets.length : 0})
+                        </h5>
+
+                        {incidentTicketsError ? (
+                          <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger text-xs font-semibold">
+                            {incidentTicketsError}
+                          </div>
+                        ) : isLoadingIncidentTickets ? (
+                          <CardSkeleton count={2} />
+                        ) : !incidentTickets || incidentTickets.length === 0 ? (
+                          <EmptyState
+                            title="No tickets linked"
+                            description="No tickets linked to this incident"
+                            iconType="tickets"
+                          />
+                        ) : (
+                          <div className="grid grid-cols-1 gap-3 max-h-[72vh] overflow-y-auto pr-1">
+                            {incidentTickets.map((ticket) => (
+                              <TicketCard
+                                key={ticket.ticketId}
+                                ticket={ticket}
+                                userRole={user?.role}
+                                onClick={() => handleSelectTicket(ticket)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </ErrorBoundary>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}

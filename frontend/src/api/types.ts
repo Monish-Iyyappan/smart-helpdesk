@@ -50,6 +50,7 @@ export interface TicketItem {
   createdBy?: number;
   assignedTo?: number | null;
   assignedAgentId?: number | null;
+  assignedAgentName?: string | null;
   incidentId?: number | null;
   createdAt: string;
   updatedAt?: string | null;
@@ -101,6 +102,8 @@ export interface IncidentItem {
   createdAt: string;
   updatedAt?: string | null;
   affectedStudentCount?: number;
+  ticketCount?: number;
+  openTicketCount?: number;
 }
 
 export interface AdminStats {

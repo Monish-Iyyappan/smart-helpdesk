@@ -73,7 +73,7 @@ export const api = {
         body: JSON.stringify(data),
       }),
     getTickets: (id: number) =>
-      request<{ incident: IncidentItem; tickets: TicketItem[]; affectedStudentCount: number }>(
+      request<TicketItem[] | { incident: IncidentItem; tickets: TicketItem[]; affectedStudentCount?: number }>(
         `/api/incidents/${id}/tickets`,
         { method: 'GET' }
       ),

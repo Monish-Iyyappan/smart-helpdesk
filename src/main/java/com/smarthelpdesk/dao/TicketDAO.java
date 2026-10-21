@@ -162,6 +162,21 @@ public class TicketDAO {
         return jdbcTemplate.query(sql, ticketRowMapper, incidentId);
     }
 
+    public List<Ticket> findByIncidentIdAndAssignedTo(Integer incidentId, Integer assignedTo) {
+        String sql = "SELECT ticket_id, ticket_number, created_by, assigned_to, category_id, incident_id, title, description, priority, status, created_at, updated_at " +
+                     "FROM tickets WHERE incident_id = ? AND assigned_to = ? ORDER BY created_at DESC, ticket_id DESC";
+        return jdbcTemplate.query(sql, ticketRowMapper, incidentId, assignedTo);
+    }
+
+    public List<Ticket> findByIncidentIdAndParticipant(Integer incidentId, Integer userId) {
+        String sql = "SELECT DISTINCT t.ticket_id, t.ticket_number, t.created_by, t.assigned_to, t.category_id, t.incident_id, t.title, t.description, t.priority, t.status, t.created_at, t.updated_at " +
+                     "FROM tickets t " +
+                     "LEFT JOIN ticket_participants tp ON t.ticket_id = tp.ticket_id " +
+                     "WHERE t.incident_id = ? AND (t.created_by = ? OR tp.user_id = ?) " +
+                     "ORDER BY t.created_at DESC, t.ticket_id DESC";
+        return jdbcTemplate.query(sql, ticketRowMapper, incidentId, userId, userId);
+    }
+
     public List<Ticket> findByParticipant(Integer userId) {
         String sql = "SELECT DISTINCT t.ticket_id, t.ticket_number, t.created_by, t.assigned_to, t.category_id, t.incident_id, t.title, t.description, t.priority, t.status, t.created_at, t.updated_at " +
                      "FROM tickets t " +

@@ -53,6 +53,11 @@ public class UserDAO {
         return jdbcTemplate.query(sql, userRowMapper, role);
     }
 
+    public List<User> findAll() {
+        String sql = "SELECT user_id, name, email, password_hash, role, created_at FROM users ORDER BY user_id";
+        return jdbcTemplate.query(sql, userRowMapper);
+    }
+
     public Integer insert(User user) {
         String sql = "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();

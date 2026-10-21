@@ -5,7 +5,7 @@ import com.smarthelpdesk.model.Incident;
 import java.time.LocalDateTime;
 
 /**
- * DTO for campus incident details including the affected students count.
+ * DTO for campus incident details including ticket count and open ticket count.
  */
 public record IncidentResponse(
         Integer incidentId,
@@ -16,9 +16,15 @@ public record IncidentResponse(
         String severity,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        int affectedStudents
+        int affectedStudents,
+        int ticketCount,
+        int openTicketCount
 ) {
     public static IncidentResponse from(Incident incident, int affectedStudents) {
+        return from(incident, affectedStudents, 0, 0);
+    }
+
+    public static IncidentResponse from(Incident incident, int affectedStudents, int ticketCount, int openTicketCount) {
         if (incident == null) {
             return null;
         }
@@ -31,7 +37,9 @@ public record IncidentResponse(
                 incident.getSeverity(),
                 incident.getCreatedAt(),
                 incident.getUpdatedAt(),
-                affectedStudents
+                affectedStudents,
+                ticketCount,
+                openTicketCount
         );
     }
 }
