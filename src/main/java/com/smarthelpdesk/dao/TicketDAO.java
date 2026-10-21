@@ -1,5 +1,6 @@
 package com.smarthelpdesk.dao;
 
+import com.smarthelpdesk.dto.ClosedTicketResponse;
 import com.smarthelpdesk.model.Ticket;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -97,6 +98,13 @@ public class TicketDAO {
         return results.stream().findFirst();
     }
 
+    public Optional<Ticket> findByIdForUpdate(Integer id) {
+        String sql = "SELECT ticket_id, ticket_number, created_by, assigned_to, category_id, incident_id, title, description, priority, status, created_at, updated_at " +
+                     "FROM tickets WHERE ticket_id = ? FOR UPDATE";
+        List<Ticket> results = jdbcTemplate.query(sql, ticketRowMapper, id);
+        return results.stream().findFirst();
+    }
+
     public Optional<Ticket> findByTicketNumber(String ticketNumber) {
         String sql = "SELECT ticket_id, ticket_number, created_by, assigned_to, category_id, incident_id, title, description, priority, status, created_at, updated_at " +
                      "FROM tickets WHERE ticket_number = ?";
@@ -154,11 +162,64 @@ public class TicketDAO {
         return jdbcTemplate.query(sql, ticketRowMapper, incidentId);
     }
 
+    public List<Ticket> findByIncidentIdAndAssignedTo(Integer incidentId, Integer assignedTo) {
+        String sql = "SELECT ticket_id, ticket_number, created_by, assigned_to, category_id, incident_id, title, description, priority, status, created_at, updated_at " +
+                     "FROM tickets WHERE incident_id = ? AND assigned_to = ? ORDER BY created_at DESC, ticket_id DESC";
+        return jdbcTemplate.query(sql, ticketRowMapper, incidentId, assignedTo);
+    }
+
+    public List<Ticket> findByIncidentIdAndParticipant(Integer incidentId, Integer userId) {
+        String sql = "SELECT DISTINCT t.ticket_id, t.ticket_number, t.created_by, t.assigned_to, t.category_id, t.incident_id, t.title, t.description, t.priority, t.status, t.created_at, t.updated_at " +
+                     "FROM tickets t " +
+                     "LEFT JOIN ticket_participants tp ON t.ticket_id = tp.ticket_id " +
+                     "WHERE t.incident_id = ? AND (t.created_by = ? OR tp.user_id = ?) " +
+                     "ORDER BY t.created_at DESC, t.ticket_id DESC";
+        return jdbcTemplate.query(sql, ticketRowMapper, incidentId, userId, userId);
+    }
+
     public List<Ticket> findByParticipant(Integer userId) {
         String sql = "SELECT DISTINCT t.ticket_id, t.ticket_number, t.created_by, t.assigned_to, t.category_id, t.incident_id, t.title, t.description, t.priority, t.status, t.created_at, t.updated_at " +
                      "FROM tickets t " +
                      "JOIN ticket_participants tp ON t.ticket_id = tp.ticket_id " +
                      "WHERE tp.user_id = ? ORDER BY t.created_at DESC, t.ticket_id DESC";
         return jdbcTemplate.query(sql, ticketRowMapper, userId);
+    }
+
+    public List<ClosedTicketResponse> findClosedTicketsLog() {
+        String sql = "SELECT " +
+                     "    t.ticket_number, " +
+                     "    t.title, " +
+                     "    cat.category_name AS category, " +
+                     "    u_agent.name AS assigned_agent_name, " +
+                     "    COALESCE(u_closed.name, 'Admin') AS closed_by, " +
+                     "    COALESCE(comm.created_at, t.updated_at) AS closed_at, " +
+                     "    COALESCE(comm.comment_text, '') AS closure_note, " +
+                     "    (SELECT COUNT(*) FROM ticket_assignment_history tah " +
+                     "     WHERE tah.ticket_id = t.ticket_id AND tah.from_agent IS NOT NULL) AS reassignment_count " +
+                     "FROM tickets t " +
+                     "JOIN categories cat ON t.category_id = cat.category_id " +
+                     "LEFT JOIN users u_agent ON t.assigned_to = u_agent.user_id " +
+                     "LEFT JOIN comments comm ON comm.comment_id = ( " +
+                     "    SELECT c2.comment_id FROM comments c2 " +
+                     "    WHERE c2.ticket_id = t.ticket_id AND c2.comment_type = 'CLOSURE' " +
+                     "    ORDER BY c2.created_at DESC, c2.comment_id DESC LIMIT 1 " +
+                     ") " +
+                     "LEFT JOIN users u_closed ON comm.user_id = u_closed.user_id " +
+                     "WHERE t.status = 'CLOSED' " +
+                     "ORDER BY closed_at DESC, t.ticket_id DESC";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Timestamp closedAtTs = rs.getTimestamp("closed_at");
+            return new ClosedTicketResponse(
+                    rs.getString("ticket_number"),
+                    rs.getString("title"),
+                    rs.getString("category"),
+                    rs.getString("assigned_agent_name"),
+                    rs.getString("closed_by"),
+                    closedAtTs != null ? closedAtTs.toLocalDateTime() : null,
+                    rs.getString("closure_note"),
+                    rs.getInt("reassignment_count")
+            );
+        });
     }
 }

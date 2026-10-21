@@ -83,3 +83,41 @@ export const RequestedPriorityBadge: React.FC<RequestedPriorityBadgeProps> = ({ 
     </span>
   );
 };
+
+export interface CommentTypeBadgeProps {
+  type?: 'GENERAL' | 'ISSUE' | 'REASSIGNMENT' | 'CLOSURE' | 'REOPEN' | string;
+}
+
+export const CommentTypeBadge: React.FC<CommentTypeBadgeProps> = ({ type }) => {
+  const norm = (type || 'GENERAL').toUpperCase();
+  if (norm === 'GENERAL') return null;
+
+  let classes = 'bg-secondary text-secondary-text border-border';
+  let label = norm;
+
+  if (norm === 'ISSUE') {
+    classes =
+      'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-600/50 font-bold';
+    label = 'ISSUE';
+  } else if (norm === 'REASSIGNMENT') {
+    classes =
+      'bg-indigo-100 text-indigo-900 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-200 dark:border-indigo-600/50 font-semibold';
+    label = 'REASSIGNMENT';
+  } else if (norm === 'CLOSURE') {
+    classes =
+      'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-600/50 font-semibold';
+    label = 'CLOSURE';
+  } else if (norm === 'REOPEN') {
+    classes =
+      'bg-teal-100 text-teal-900 border-teal-300 dark:bg-teal-950/60 dark:text-teal-200 dark:border-teal-600/50 font-semibold';
+    label = 'REOPEN';
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-md border ${classes}`}
+    >
+      {label}
+    </span>
+  );
+};

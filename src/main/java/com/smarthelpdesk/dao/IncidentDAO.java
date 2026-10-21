@@ -1,5 +1,6 @@
 package com.smarthelpdesk.dao;
 
+import com.smarthelpdesk.dto.IncidentResponse;
 import com.smarthelpdesk.model.Incident;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -76,6 +77,51 @@ public class IncidentDAO {
         String sql = "SELECT incident_id, title, description, location, status, severity, created_at, updated_at " +
                      "FROM incidents ORDER BY created_at DESC";
         return jdbcTemplate.query(sql, incidentRowMapper);
+    }
+
+    public List<IncidentResponse> findAllWithCounts() {
+        String sql = "SELECT " +
+                     "    i.incident_id, " +
+                     "    i.title, " +
+                     "    i.description, " +
+                     "    i.location, " +
+                     "    i.status, " +
+                     "    i.severity, " +
+                     "    i.created_at, " +
+                     "    i.updated_at, " +
+                     "    COUNT(t.ticket_id) AS ticket_count, " +
+                     "    COUNT(CASE WHEN t.status NOT IN ('RESOLVED', 'CLOSED') THEN 1 END) AS open_ticket_count " +
+                     "FROM incidents i " +
+                     "LEFT JOIN tickets t ON i.incident_id = t.incident_id " +
+                     "GROUP BY i.incident_id, i.title, i.description, i.location, i.status, i.severity, i.created_at, i.updated_at " +
+                     "ORDER BY i.created_at DESC";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Integer id = rs.getInt("incident_id");
+            String title = rs.getString("title");
+            String description = rs.getString("description");
+            String location = rs.getString("location");
+            String status = rs.getString("status");
+            String severity = rs.getString("severity");
+            Timestamp cat = rs.getTimestamp("created_at");
+            Timestamp uat = rs.getTimestamp("updated_at");
+            int ticketCount = rs.getInt("ticket_count");
+            int openTicketCount = rs.getInt("open_ticket_count");
+
+            return new IncidentResponse(
+                    id,
+                    title,
+                    description,
+                    location,
+                    status,
+                    severity,
+                    cat != null ? cat.toLocalDateTime() : null,
+                    uat != null ? uat.toLocalDateTime() : null,
+                    0,
+                    ticketCount,
+                    openTicketCount
+            );
+        });
     }
 
     public int countAffectedStudents(Integer incidentId) {

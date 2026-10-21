@@ -79,7 +79,7 @@ public class TicketController {
             throw new IllegalArgumentException("Request body cannot be null");
         }
         Integer actorUserId = SecurityUtils.getActorUserId(authentication);
-        Comment comment = ticketService.addComment(ticketId, actorUserId, request.commentText());
+        Comment comment = ticketService.addComment(ticketId, actorUserId, request.commentText(), request.commentType());
         return ResponseEntity.status(HttpStatus.CREATED).body(comment);
     }
 

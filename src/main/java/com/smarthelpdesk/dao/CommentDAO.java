@@ -27,6 +27,7 @@ public class CommentDAO {
         comment.setTicketId(rs.getInt("ticket_id"));
         comment.setUserId(rs.getInt("user_id"));
         comment.setCommentText(rs.getString("comment_text"));
+        comment.setCommentType(rs.getString("comment_type"));
         Timestamp createdAt = rs.getTimestamp("created_at");
         if (createdAt != null) {
             comment.setCreatedAt(createdAt.toLocalDateTime());
@@ -35,7 +36,7 @@ public class CommentDAO {
     };
 
     public Integer insert(Comment comment) {
-        String sql = "INSERT INTO comments (ticket_id, user_id, comment_text) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO comments (ticket_id, user_id, comment_text, comment_type) VALUES (?, ?, ?, ?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbcTemplate.update(connection -> {
@@ -43,6 +44,7 @@ public class CommentDAO {
             ps.setInt(1, comment.getTicketId());
             ps.setInt(2, comment.getUserId());
             ps.setString(3, comment.getCommentText());
+            ps.setString(4, comment.getCommentType() != null ? comment.getCommentType() : "GENERAL");
             return ps;
         }, keyHolder);
 
@@ -56,7 +58,7 @@ public class CommentDAO {
     }
 
     public List<Comment> findByTicketId(Integer ticketId) {
-        String sql = "SELECT comment_id, ticket_id, user_id, comment_text, created_at " +
+        String sql = "SELECT comment_id, ticket_id, user_id, comment_text, comment_type, created_at " +
                      "FROM comments WHERE ticket_id = ? ORDER BY created_at ASC";
         return jdbcTemplate.query(sql, commentRowMapper, ticketId);
     }

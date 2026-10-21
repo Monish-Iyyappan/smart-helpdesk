@@ -3,7 +3,10 @@ package com.smarthelpdesk.controller;
 import com.smarthelpdesk.config.SecurityUtils;
 import com.smarthelpdesk.dto.AdminStatsResponse;
 import com.smarthelpdesk.dto.AssignTicketRequest;
+import com.smarthelpdesk.dto.CloseTicketRequest;
+import com.smarthelpdesk.dto.ClosedTicketResponse;
 import com.smarthelpdesk.dto.CreateAgentRequest;
+import com.smarthelpdesk.dto.ReopenTicketRequest;
 import com.smarthelpdesk.dto.TicketListResponse;
 import com.smarthelpdesk.dto.UrgencySummaryResponse;
 import com.smarthelpdesk.dto.UserResponse;
@@ -21,6 +24,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import com.smarthelpdesk.assignment.AssignmentRecord;
+import com.smarthelpdesk.assignment.AssignmentService;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,11 +40,14 @@ public class AdminController {
     private final AdminService adminService;
     private final IncidentService incidentService;
     private final UrgencyService urgencyService;
+    private final AssignmentService assignmentService;
 
-    public AdminController(AdminService adminService, IncidentService incidentService, UrgencyService urgencyService) {
+    public AdminController(AdminService adminService, IncidentService incidentService,
+                           UrgencyService urgencyService, AssignmentService assignmentService) {
         this.adminService = adminService;
         this.incidentService = incidentService;
         this.urgencyService = urgencyService;
+        this.assignmentService = assignmentService;
     }
 
     @GetMapping("/tickets")
@@ -71,7 +80,7 @@ public class AdminController {
         return ResponseEntity.ok(tickets);
     }
 
-    @PutMapping("/tickets/{ticketId}/assign")
+    @RequestMapping(value = "/tickets/{ticketId}/assign", method = {RequestMethod.POST, RequestMethod.PUT})
     public ResponseEntity<Ticket> assign(
             @PathVariable Integer ticketId,
             @RequestBody AssignTicketRequest request,
@@ -80,21 +89,47 @@ public class AdminController {
             throw new IllegalArgumentException("Request body cannot be null");
         }
         Integer actorUserId = SecurityUtils.getActorUserId(authentication);
-        Ticket ticket = adminService.assign(ticketId, actorUserId, request.agentId());
+        Ticket ticket = assignmentService.assignTicket(ticketId, actorUserId, request.agentId(), request.reason());
         return ResponseEntity.ok(ticket);
     }
 
-    @PutMapping("/tickets/{ticketId}/close")
-    public ResponseEntity<Ticket> close(@PathVariable Integer ticketId, Authentication authentication) {
+    @GetMapping("/tickets/{ticketId}/assignments")
+    public ResponseEntity<List<AssignmentRecord>> getAssignmentHistory(
+            @PathVariable Integer ticketId,
+            Authentication authentication) {
         Integer actorUserId = SecurityUtils.getActorUserId(authentication);
-        Ticket ticket = adminService.close(ticketId, actorUserId);
+        List<AssignmentRecord> history = assignmentService.getAssignmentHistory(ticketId, actorUserId);
+        return ResponseEntity.ok(history);
+    }
+
+    @RequestMapping(value = "/tickets/{ticketId}/close", method = {RequestMethod.POST, RequestMethod.PUT})
+    public ResponseEntity<Ticket> close(
+            @PathVariable Integer ticketId,
+            @RequestBody CloseTicketRequest request,
+            Authentication authentication) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request body cannot be null");
+        }
+        Integer actorUserId = SecurityUtils.getActorUserId(authentication);
+        Ticket ticket = adminService.close(ticketId, actorUserId, request.note());
         return ResponseEntity.ok(ticket);
     }
 
-    @PutMapping("/tickets/{ticketId}/reopen")
-    public ResponseEntity<Ticket> reopen(@PathVariable Integer ticketId, Authentication authentication) {
+    @GetMapping("/tickets/closed")
+    public ResponseEntity<List<ClosedTicketResponse>> getClosedTickets(Authentication authentication) {
         Integer actorUserId = SecurityUtils.getActorUserId(authentication);
-        Ticket ticket = adminService.reopen(ticketId, actorUserId);
+        List<ClosedTicketResponse> closedTickets = adminService.getClosedTicketsLog(actorUserId);
+        return ResponseEntity.ok(closedTickets);
+    }
+
+    @RequestMapping(value = "/tickets/{ticketId}/reopen", method = {RequestMethod.POST, RequestMethod.PUT})
+    public ResponseEntity<Ticket> reopen(
+            @PathVariable Integer ticketId,
+            @RequestBody(required = false) ReopenTicketRequest request,
+            Authentication authentication) {
+        Integer actorUserId = SecurityUtils.getActorUserId(authentication);
+        String reason = (request != null) ? request.reason() : null;
+        Ticket ticket = adminService.reopen(ticketId, actorUserId, reason);
         return ResponseEntity.ok(ticket);
     }
 

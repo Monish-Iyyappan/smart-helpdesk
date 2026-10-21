@@ -67,11 +67,12 @@
   --color-urgency-urgent-text: #7f1d1d;
   --color-urgency-urgent-border: #fca5a5;
 
-  /* Overdue Badge & Pulsing Ring */
-  --color-overdue-bg: #ffe4e6;
-  --color-overdue-text: #881337;
-  --color-overdue-border: #fda4af;
-  --color-overdue-glow: rgba(225, 29, 72, 0.45);
+  /* Overdue Badge, Card & Pulsing Ring (Light: strong red with soft red background) */
+  --color-overdue-card-bg: #fff1f2;
+  --color-overdue-bg: #fee2e2;
+  --color-overdue-text: #7f1d1d;
+  --color-overdue-border: #dc2626;
+  --color-overdue-glow: rgba(220, 38, 38, 0.35);
 
   /* Ticket Statuses */
   --color-status-open-bg: #eef2ff;
@@ -104,6 +105,25 @@
   --shadow-sm: 0 1px 2px 0 rgba(5, 3, 21, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(5, 3, 21, 0.08), 0 2px 4px -2px rgba(5, 3, 21, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(5, 3, 21, 0.1), 0 4px 6px -4px rgba(5, 3, 21, 0.08);
+
+  /* Bento UI Tokens (Light) */
+  --bento-card-bg: #ffffff;
+  --bento-card-border: #dedcff;
+  --bento-card-hover: #f3f2fe;
+  --bento-card-subtle: #fbfbfe;
+  --bento-glow: rgba(67, 59, 255, 0.08);
+
+  /* Glass Tokens: Only permitted on login card, modals and command palette */
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(222, 220, 255, 0.6);
+  --glass-blur: 16px;
+
+  /* Focus Ring */
+  --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #433bff;
+
+  /* Skeleton Tokens */
+  --color-skeleton: #eeedfc;
+  --color-skeleton-highlight: #dedcff;
 
   /* Transitions (150-300 ms) */
   --duration-fast: 150ms;
@@ -172,11 +192,12 @@
   --color-urgency-urgent-text: #fecaca;
   --color-urgency-urgent-border: #7f1d1d;
 
-  /* Overdue Badge & Glow (Dark) */
-  --color-overdue-bg: #4c0519;
-  --color-overdue-text: #fecdd3;
-  --color-overdue-border: #881337;
-  --color-overdue-glow: rgba(244, 63, 94, 0.45);
+  /* Overdue Badge, Card & Glow (Dark: bright neon red border/glow on dark red tint) */
+  --color-overdue-card-bg: #22040b;
+  --color-overdue-bg: #450a0a;
+  --color-overdue-text: #fecaca;
+  --color-overdue-border: #ff2255;
+  --color-overdue-glow: rgba(255, 34, 85, 0.55);
 
   /* Ticket Statuses (Dark) */
   --color-status-open-bg: #1e1b4b;
@@ -198,6 +219,73 @@
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+
+  /* Bento UI Tokens (Dark) */
+  --bento-card-bg: #0e0b24;
+  --bento-card-border: #282356;
+  --bento-card-hover: #171338;
+  --bento-card-subtle: #09061d;
+  --bento-glow: rgba(109, 102, 255, 0.12);
+
+  /* Glass Tokens (Dark) */
+  --glass-bg: rgba(14, 11, 36, 0.75);
+  --glass-border: rgba(40, 35, 86, 0.6);
+  --glass-blur: 16px;
+
+  /* Focus Ring (Dark) */
+  --focus-ring: 0 0 0 2px #0e0b24, 0 0 0 4px #6d66ff;
+
+  /* Skeleton Tokens (Dark) */
+  --color-skeleton: #141030;
+  --color-skeleton-highlight: #282356;
+}
+
+/* =============================================================================
+   UTILITY CLASSES & FOCUS RINGS
+   ============================================================================= */
+
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Glass effect strictly restricted to login card, modals and command palette */
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+.bento-card {
+  background-color: var(--bento-card-bg);
+  border: 1px solid var(--bento-card-border);
+  border-radius: var(--radius-xl);
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease;
+}
+
+.bento-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 8px 24px -4px var(--bento-glow);
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.animate-shine {
+  animation: shine 4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shine {
+    animation: none !important;
+  }
 }
 
 /* Base Body Application */
@@ -223,6 +311,31 @@ body {
 
 .animate-overdue-glow {
   animation: overdue-ring-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ticket-card-overdue {
+  background-color: var(--color-overdue-card-bg) !important;
+  border-color: var(--color-overdue-border) !important;
+}
+
+/* Subtle Custom Scrollbar for internal scroll containers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-dim);
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

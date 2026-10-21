@@ -8,6 +8,12 @@ import com.smarthelpdesk.dto.TicketListResponse;
 import com.smarthelpdesk.dto.UrgencySummaryResponse;
 import com.smarthelpdesk.model.Ticket;
 import com.smarthelpdesk.model.User;
+import com.smarthelpdesk.assignment.AssignmentPolicy;
+import com.smarthelpdesk.assignment.AssignmentService;
+import com.smarthelpdesk.dao.CommentDAO;
+import com.smarthelpdesk.dto.ClosedTicketResponse;
+import com.smarthelpdesk.model.Comment;
+import org.springframework.transaction.annotation.Transactional;
 import com.smarthelpdesk.priority.UrgencyService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,15 +31,20 @@ public class AdminService {
     private final PasswordEncoder passwordEncoder;
     private final DashboardDAO dashboardDAO;
     private final UrgencyService urgencyService;
+    private final AssignmentService assignmentService;
+    private final CommentDAO commentDAO;
 
     public AdminService(TicketDAO ticketDAO, UserDAO userDAO,
                         PasswordEncoder passwordEncoder, DashboardDAO dashboardDAO,
-                        UrgencyService urgencyService) {
+                        UrgencyService urgencyService, AssignmentService assignmentService,
+                        CommentDAO commentDAO) {
         this.ticketDAO = ticketDAO;
         this.userDAO = userDAO;
         this.passwordEncoder = passwordEncoder;
         this.dashboardDAO = dashboardDAO;
         this.urgencyService = urgencyService;
+        this.assignmentService = assignmentService;
+        this.commentDAO = commentDAO;
     }
 
     private User checkAdmin(Integer adminUserId) {
@@ -49,43 +60,24 @@ public class AdminService {
     }
 
     public Ticket assign(Integer ticketId, Integer adminUserId, Integer agentId) {
-        checkAdmin(adminUserId);
-
-        if (ticketId == null || agentId == null) {
-            throw new IllegalArgumentException("Ticket ID and agent ID cannot be null");
-        }
-
-        Ticket ticket = ticketDAO.findById(ticketId)
-                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
-
-        if ("CLOSED".equalsIgnoreCase(ticket.getStatus())) {
-            throw new IllegalStateException("CLOSED tickets cannot be assigned");
-        }
-
-        if (!"OPEN".equalsIgnoreCase(ticket.getStatus())) {
-            throw new IllegalStateException("Ticket must be in OPEN status to be assigned. Current status: " + ticket.getStatus());
-        }
-
-        User agent = userDAO.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
-        if (!"AGENT".equalsIgnoreCase(agent.getRole())) {
-            throw new IllegalArgumentException("Target user is not an AGENT (role: " + agent.getRole() + ")");
-        }
-
-        ticketDAO.assign(ticketId, agentId);
-        ticket.setAssignedTo(agentId);
-        ticket.setStatus("ASSIGNED");
-        return ticket;
+        return assignmentService.assignTicket(ticketId, adminUserId, agentId, null);
     }
 
-    public Ticket close(Integer ticketId, Integer adminUserId) {
-        checkAdmin(adminUserId);
+    public Ticket assign(Integer ticketId, Integer adminUserId, Integer agentId, String reason) {
+        return assignmentService.assignTicket(ticketId, adminUserId, agentId, reason);
+    }
+
+    @Transactional
+    public Ticket close(Integer ticketId, Integer adminUserId, String note) {
+        User admin = checkAdmin(adminUserId);
 
         if (ticketId == null) {
             throw new IllegalArgumentException("Ticket ID cannot be null");
         }
 
-        Ticket ticket = ticketDAO.findById(ticketId)
+        String trimmedNote = AssignmentPolicy.validateClosureNote(note);
+
+        Ticket ticket = ticketDAO.findByIdForUpdate(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
         if ("CLOSED".equalsIgnoreCase(ticket.getStatus())) {
@@ -96,32 +88,46 @@ public class AdminService {
             throw new IllegalStateException("Can only close a ticket from RESOLVED status. Current status: " + ticket.getStatus());
         }
 
+        Comment closureComment = new Comment(ticketId, admin.getUserId(), trimmedNote, "CLOSURE");
+        commentDAO.insert(closureComment);
+
         ticketDAO.updateStatus(ticketId, "CLOSED");
         ticket.setStatus("CLOSED");
         return ticket;
     }
 
-    public Ticket reopen(Integer ticketId, Integer adminUserId) {
+    public Ticket close(Integer ticketId, Integer adminUserId) {
+        return close(ticketId, adminUserId, "Closed by administrator.");
+    }
+
+    public List<ClosedTicketResponse> getClosedTicketsLog(Integer adminUserId) {
         checkAdmin(adminUserId);
+        return ticketDAO.findClosedTicketsLog();
+    }
+
+    @Transactional
+    public Ticket reopen(Integer ticketId, Integer adminUserId, String reason) {
+        User admin = checkAdmin(adminUserId);
 
         if (ticketId == null) {
             throw new IllegalArgumentException("Ticket ID cannot be null");
         }
 
-        Ticket ticket = ticketDAO.findById(ticketId)
+        Ticket ticket = ticketDAO.findByIdForUpdate(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
-        if ("CLOSED".equalsIgnoreCase(ticket.getStatus())) {
-            throw new IllegalStateException("CLOSED tickets cannot be reopened");
-        }
+        String trimmedReason = AssignmentPolicy.validateReopen(reason, ticket.getStatus());
 
-        if (!"RESOLVED".equalsIgnoreCase(ticket.getStatus())) {
-            throw new IllegalStateException("Can only reopen a ticket from RESOLVED status. Current status: " + ticket.getStatus());
-        }
+        Comment reopenComment = new Comment(ticketId, admin.getUserId(), trimmedReason, "REOPEN");
+        commentDAO.insert(reopenComment);
 
         ticketDAO.updateStatus(ticketId, "IN_PROGRESS");
         ticket.setStatus("IN_PROGRESS");
         return ticket;
+    }
+
+    public Ticket reopen(Integer ticketId, Integer adminUserId) {
+        return reopen(ticketId, adminUserId, "Reopened by administrator.");
     }
 
     public List<Ticket> viewAll(Integer adminUserId) {

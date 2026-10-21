@@ -3,6 +3,7 @@ package com.smarthelpdesk.controller;
 import com.smarthelpdesk.config.SecurityUtils;
 import com.smarthelpdesk.dto.CreateIncidentRequest;
 import com.smarthelpdesk.dto.IncidentResponse;
+import com.smarthelpdesk.dto.IncidentTicketResponse;
 import com.smarthelpdesk.dto.IncidentTicketsResponse;
 import com.smarthelpdesk.model.Incident;
 import com.smarthelpdesk.model.Ticket;
@@ -56,18 +57,16 @@ public class IncidentController {
 
     @GetMapping
     public ResponseEntity<List<IncidentResponse>> listAll() {
-        List<Incident> incidents = incidentService.listAll();
-        List<IncidentResponse> response = incidents.stream()
-                .map(inc -> IncidentResponse.from(inc, incidentService.affectedStudents(inc.getIncidentId())))
-                .toList();
+        List<IncidentResponse> response = incidentService.listAllWithCounts();
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}/tickets")
-    public ResponseEntity<IncidentTicketsResponse> getIncidentTickets(@PathVariable Integer id) {
-        Incident incident = incidentService.getById(id);
-        List<Ticket> tickets = incidentService.getTicketsByIncident(id);
-        int affectedCount = incidentService.affectedStudents(id);
-        return ResponseEntity.ok(new IncidentTicketsResponse(incident, tickets, affectedCount));
+    public ResponseEntity<List<IncidentTicketResponse>> getIncidentTickets(
+            @PathVariable Integer id,
+            Authentication authentication) {
+        Integer actorUserId = SecurityUtils.getActorUserId(authentication);
+        List<IncidentTicketResponse> tickets = incidentService.getTicketsByIncident(id, actorUserId);
+        return ResponseEntity.ok(tickets);
     }
 }

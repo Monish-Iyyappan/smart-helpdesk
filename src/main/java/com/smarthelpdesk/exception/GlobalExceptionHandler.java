@@ -1,5 +1,6 @@
 package com.smarthelpdesk.exception;
 
+import com.smarthelpdesk.assignment.AssignmentException;
 import com.smarthelpdesk.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,12 @@ import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AssignmentException.class)
+    public ResponseEntity<ErrorResponse> handleAssignmentException(AssignmentException ex) {
+        HttpStatus status = ex.isConflict() ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(new ErrorResponse(ex.getMessage()));
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {

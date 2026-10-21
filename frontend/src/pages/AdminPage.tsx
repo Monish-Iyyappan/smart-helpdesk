@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type {
   AdminStats,
+  ClosedTicketLogItem,
   IncidentItem,
   IncidentSeverity,
   TicketDetail,
@@ -17,8 +18,13 @@ import { PlusIcon, UserPlusIcon, LinkIcon } from '../components/Icons';
 import { CountUp } from '../components/CountUp';
 import { AnimatedTabs } from '../components/ui/animated-tabs';
 import { StatefulButton } from '../components/ui/stateful-button';
+import { BentoStatCard } from '../components/BentoStatCard';
+import { GreetingHeader } from '../components/GreetingHeader';
+import { EmptyState } from '../components/EmptyState';
+import { CardSkeleton } from '../components/ui/skeleton';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
-type AdminTab = 'STATS' | 'ALL_TICKETS' | 'UNASSIGNED' | 'OVERDUE' | 'INCIDENTS' | 'AGENTS';
+type AdminTab = 'STATS' | 'ALL_TICKETS' | 'UNASSIGNED' | 'OVERDUE' | 'INCIDENTS' | 'AGENTS' | 'CLOSED_LOG';
 
 export const AdminPage: React.FC = () => {
   const { user, showToast } = useAuth();
@@ -32,6 +38,8 @@ export const AdminPage: React.FC = () => {
   const [overdueTickets, setOverdueTickets] = useState<TicketItem[]>([]);
   const [incidents, setIncidents] = useState<IncidentItem[]>([]);
   const [agents, setAgents] = useState<User[]>([]);
+  const [closedLog, setClosedLog] = useState<ClosedTicketLogItem[]>([]);
+  const [closedLogSearch, setClosedLogSearch] = useState('');
 
   // Filtering & Sorting for Tickets
   const [ticketSearch, setTicketSearch] = useState('');
@@ -64,24 +72,131 @@ export const AdminPage: React.FC = () => {
   const [linkTicketId, setLinkTicketId] = useState<number | ''>('');
   const [isLinking, setIsLinking] = useState(false);
 
+  // Incident Selection & Tickets
+  const [selectedIncident, setSelectedIncident] = useState<IncidentItem | null>(null);
+  const [incidentTickets, setIncidentTickets] = useState<TicketItem[]>([]);
+  const [isLoadingIncidentTickets, setIsLoadingIncidentTickets] = useState(false);
+  const [incidentTicketsError, setIncidentTicketsError] = useState<string | null>(null);
+
+  const loadIncidentTickets = async (incidentId: number) => {
+    setIsLoadingIncidentTickets(true);
+    setIncidentTicketsError(null);
+    try {
+      const res: any = await api.incidents.getTickets(incidentId);
+      let list: TicketItem[] = [];
+      if (Array.isArray(res)) {
+        list = res;
+      } else if (res && Array.isArray(res.tickets)) {
+        list = res.tickets;
+      } else {
+        list = (allTickets || []).filter((t) => t.incidentId === incidentId);
+      }
+
+      const agentMap = new Map(agents.map((a) => [a.userId, a.name]));
+      const allTicketMap = new Map(allTickets.map((t) => [t.ticketId, t]));
+
+      const mapped = list.map((t: any) => {
+        const fullTicket = allTicketMap.get(t.ticketId) || {};
+        const agentName =
+          t.assignedAgentName ||
+          t.assignedAgent ||
+          (t.assignedTo ? agentMap.get(t.assignedTo) : null) ||
+          (fullTicket as any).assignedAgentName;
+        return {
+          ...fullTicket,
+          ...t,
+          ticketNumber: t.ticketNumber || (fullTicket as any).ticketNumber || `HD-${t.ticketId}`,
+          categoryName: t.categoryName || (fullTicket as any).categoryName || 'General',
+          assignedAgentName: agentName,
+          urgencyLevel: t.urgencyLevel || (fullTicket as any).urgencyLevel || 'LOW',
+          urgencyScore: t.urgencyScore ?? (fullTicket as any).urgencyScore ?? 0,
+          overdue: typeof t.overdue === 'boolean' ? t.overdue : Boolean((fullTicket as any).overdue),
+          requestedPriority: t.requestedPriority || t.priority || (fullTicket as any).requestedPriority || 'LOW',
+        };
+      });
+      setIncidentTickets(mapped);
+    } catch (err: any) {
+      const fallback = (allTickets || []).filter((t) => t.incidentId === incidentId);
+      if (fallback.length > 0) {
+        const agentMap = new Map(agents.map((a) => [a.userId, a.name]));
+        const mappedFallback = fallback.map((t) => ({
+          ...t,
+          categoryName: t.categoryName || 'General',
+          assignedAgentName: t.assignedAgentName || (t.assignedTo ? agentMap.get(t.assignedTo) : null),
+          urgencyLevel: t.urgencyLevel || 'LOW',
+          urgencyScore: t.urgencyScore ?? 0,
+          requestedPriority: t.requestedPriority || t.priority || 'LOW',
+        }));
+        setIncidentTickets(mappedFallback);
+      } else {
+        setIncidentTickets([]);
+        setIncidentTicketsError(err?.message || 'Failed to load tickets for this incident');
+      }
+    } finally {
+      setIsLoadingIncidentTickets(false);
+    }
+  };
+
+  const handleSelectIncident = (inc: IncidentItem) => {
+    if (selectedIncident?.incidentId === inc.incidentId) {
+      setSelectedIncident(null);
+      setIncidentTickets([]);
+      setIncidentTicketsError(null);
+    } else {
+      setSelectedIncident(inc);
+      loadIncidentTickets(inc.incidentId);
+    }
+  };
+
   const loadAllData = async () => {
     setIsLoading(true);
     try {
-      const [sData, aTickets, uTickets, oTickets, incList, agList] = await Promise.all([
+      const [sData, aTickets, uTickets, oTickets, incList, agList, cLog] = await Promise.all([
         api.admin.stats().catch(() => null),
         api.admin.tickets(),
         api.admin.unassignedTickets(),
         api.admin.overdueTickets(),
         api.incidents.list(),
         api.admin.listAgents(),
+        api.admin.closedTickets().catch(() => []),
       ]);
 
+      const agentMap = new Map((agList || []).map((a) => [a.userId, a.name]));
+      const enrichedAllTickets = (aTickets || []).map((t) => ({
+        ...t,
+        assignedAgentName: t.assignedAgentName || (t.assignedTo ? agentMap.get(t.assignedTo) : null),
+      }));
+
+      const computedIncList = (incList || []).map((inc) => {
+        if (typeof inc.ticketCount === 'number' && typeof inc.openTicketCount === 'number') {
+          return inc;
+        }
+        const linked = (enrichedAllTickets || []).filter((t) => t.incidentId === inc.incidentId);
+        const openCount = linked.filter((t) => t.status !== 'RESOLVED' && t.status !== 'CLOSED').length;
+        return {
+          ...inc,
+          ticketCount: linked.length,
+          openTicketCount: openCount,
+        };
+      });
+
       setStats(sData);
-      setAllTickets(aTickets);
-      setUnassignedTickets(uTickets);
-      setOverdueTickets(oTickets);
-      setIncidents(incList);
+      setAllTickets(enrichedAllTickets);
+      setUnassignedTickets((uTickets || []).map((t) => ({ ...t, assignedAgentName: null })));
+      setOverdueTickets((oTickets || []).map((t) => ({
+        ...t,
+        assignedAgentName: t.assignedAgentName || (t.assignedTo ? agentMap.get(t.assignedTo) : null),
+      })));
+      setIncidents(computedIncList);
       setAgents(agList);
+      setClosedLog(cLog || []);
+
+      if (selectedIncident) {
+        const updated = computedIncList.find((i) => i.incidentId === selectedIncident.incidentId);
+        if (updated) {
+          setSelectedIncident(updated);
+        }
+      }
     } catch {
       // Handled by global toast
     } finally {
@@ -111,7 +226,11 @@ export const AdminPage: React.FC = () => {
         // Handled
       }
     }
+    if (selectedIncident) {
+      loadIncidentTickets(selectedIncident.incidentId);
+    }
     loadAllData();
+    api.admin.closedTickets().then((cLog) => setClosedLog(cLog || [])).catch(() => {});
   };
 
   // Add Agent Submission
@@ -172,13 +291,17 @@ export const AdminPage: React.FC = () => {
     if (!linkIncidentId || !linkTicketId) return;
 
     setIsLinking(true);
+    const targetIncId = Number(linkIncidentId);
     try {
-      await api.admin.linkTicket(Number(linkIncidentId), Number(linkTicketId));
+      await api.admin.linkTicket(targetIncId, Number(linkTicketId));
       showToast('Ticket linked to incident successfully!', 'success');
       setShowLinkIncidentModal(false);
       setLinkIncidentId('');
       setLinkTicketId('');
       loadAllData();
+      if (selectedIncident && selectedIncident.incidentId === targetIncId) {
+        loadIncidentTickets(targetIncId);
+      }
     } catch {
       // Handled by global toast
     } finally {
@@ -248,7 +371,22 @@ export const AdminPage: React.FC = () => {
     { id: 'OVERDUE', label: 'Overdue SLA', count: overdueTickets.length },
     { id: 'INCIDENTS', label: 'Incidents', count: incidents.length },
     { id: 'AGENTS', label: 'Agents', count: agents.length },
+    { id: 'CLOSED_LOG', label: 'Closed Log', count: closedLog.length },
   ];
+
+  const filteredClosedLog = useMemo(() => {
+    if (!closedLogSearch.trim()) return closedLog;
+    const q = closedLogSearch.toLowerCase();
+    return closedLog.filter(
+      (log) =>
+        log.ticketNumber.toLowerCase().includes(q) ||
+        log.title.toLowerCase().includes(q) ||
+        log.category.toLowerCase().includes(q) ||
+        (log.assignedAgentName && log.assignedAgentName.toLowerCase().includes(q)) ||
+        log.closedBy.toLowerCase().includes(q) ||
+        (log.closureNote && log.closureNote.toLowerCase().includes(q))
+    );
+  }, [closedLog, closedLogSearch]);
 
   return (
     <Shell
@@ -285,6 +423,39 @@ export const AdminPage: React.FC = () => {
         </div>
       }
     >
+      {/* Bento Greeting Header */}
+      <GreetingHeader
+        subtitle="Full administrative control over tickets, SLA breaches, campus incidents, and agent workloads."
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAddAgentModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors focus-ring"
+            >
+              <UserPlusIcon className="w-3.5 h-3.5" />
+              <span>Add Agent</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateIncidentModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors focus-ring"
+            >
+              <PlusIcon className="w-3.5 h-3.5" />
+              <span>New Incident</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowLinkIncidentModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover transition-colors shadow-sm focus-ring"
+            >
+              <LinkIcon className="w-3.5 h-3.5" />
+              <span>Link Ticket</span>
+            </button>
+          </div>
+        }
+      />
+
       {/* Aceternity Animated Tabs */}
       <div className="mb-6">
         <AnimatedTabs
@@ -297,32 +468,35 @@ export const AdminPage: React.FC = () => {
       {/* Tab 1: Stats & System Overview */}
       {activeTab === 'STATS' && (
         <div className="space-y-6">
-          {/* Key Metric Cards with CountUp */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-              <span className="text-xs font-semibold text-text-muted">Total Tickets</span>
-              <div className="text-2xl font-bold text-text mt-1">
-                <CountUp value={stats?.totalTickets || 0} />
-              </div>
-            </div>
-            <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-              <span className="text-xs font-semibold text-text-muted">Unassigned</span>
-              <div className="text-2xl font-bold text-text mt-1">
-                <CountUp value={unassignedTickets.length} />
-              </div>
-            </div>
-            <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-              <span className="text-xs font-semibold text-text-muted">Overdue SLA</span>
-              <div className="text-2xl font-bold text-danger mt-1">
-                <CountUp value={stats?.overdueTickets ?? overdueTickets.length} />
-              </div>
-            </div>
-            <div className="p-4 bg-surface border border-border rounded-xl shadow-xs">
-              <span className="text-xs font-semibold text-text-muted">Active Incidents</span>
-              <div className="text-2xl font-bold text-text mt-1">
-                <CountUp value={stats?.totalIncidents || incidents.length} />
-              </div>
-            </div>
+          {/* Key Metric Cards with BentoStatCards and Sparklines */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
+            <BentoStatCard
+              label="Total Tickets"
+              value={stats?.totalTickets || allTickets.length}
+              sparklineData={[allTickets.length, allTickets.length + 2, allTickets.length + 1, allTickets.length]}
+              description="System wide volume"
+            />
+            <BentoStatCard
+              label="Unassigned Queue"
+              value={unassignedTickets.length}
+              sparklineData={[unassignedTickets.length + 1, unassignedTickets.length, unassignedTickets.length]}
+              sparklineColor="var(--color-accent)"
+              description="Requires agent triage"
+            />
+            <BentoStatCard
+              label="Overdue SLA"
+              value={stats?.overdueTickets ?? overdueTickets.length}
+              sparklineData={[overdueTickets.length, overdueTickets.length + 1, overdueTickets.length]}
+              isAlert={(stats?.overdueTickets ?? overdueTickets.length) > 0}
+              description="Target SLA breached"
+            />
+            <BentoStatCard
+              label="Active Incidents"
+              value={stats?.totalIncidents ?? incidents.length}
+              sparklineData={[incidents.length, incidents.length + 1, incidents.length]}
+              sparklineColor="var(--color-danger)"
+              description="Major campus issues"
+            />
           </div>
 
           {/* Urgency Distribution with CountUp */}
@@ -439,19 +613,17 @@ export const AdminPage: React.FC = () => {
 
           {/* List display with staggered entrance and layout animation */}
           {isLoading ? (
-            <div className="text-center py-16 bg-surface border border-border rounded-xl">
-              <div className="inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
-              <p className="text-xs text-text-muted">Loading tickets...</p>
-            </div>
+            <CardSkeleton count={4} />
           ) : displayedTickets.length === 0 ? (
-            <div className="text-center py-16 bg-surface border border-border rounded-xl p-6">
-              <p className="text-sm font-semibold text-text">No tickets found</p>
-              <p className="text-xs text-text-muted mt-1">
-                {ticketSearch
+            <EmptyState
+              title="No Tickets in View"
+              description={
+                ticketSearch
                   ? 'No tickets match your search query.'
-                  : 'There are currently no tickets in this view.'}
-              </p>
-            </div>
+                  : 'There are currently no tickets in this administrative view.'
+              }
+              iconType="tickets"
+            />
           ) : (
             <motion.div
               layout
@@ -519,7 +691,7 @@ export const AdminPage: React.FC = () => {
             <div>
               <h3 className="text-sm font-bold text-text">Campus Incidents</h3>
               <p className="text-xs text-text-muted mt-0.5">
-                Major campus events driving ticket urgency calculation and affected student counts.
+                Major campus events driving ticket grouping, SLAs, and urgency calculation.
               </p>
             </div>
             <button
@@ -540,48 +712,135 @@ export const AdminPage: React.FC = () => {
               </p>
             </div>
           ) : (
-            <motion.div
-              layout
-              initial="hidden"
-              animate="show"
-              variants={{
-                hidden: { opacity: 0 },
-                show: {
-                  opacity: 1,
-                  transition: { staggerChildren: 0.05 },
-                },
-              }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-3"
-            >
-              {incidents.map((inc) => (
-                <motion.div
-                  key={inc.incidentId}
-                  layout
-                  variants={{
-                    hidden: { opacity: 0, y: 10 },
-                    show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
-                  }}
-                  className="p-4 bg-surface border border-border rounded-xl shadow-xs"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-xs font-semibold text-text-muted">
-                      INC-{inc.incidentId}
-                    </span>
-                    <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-urgency-urgent-bg text-urgency-urgent-text border border-urgency-urgent-border">
-                      {inc.severity}
-                    </span>
-                  </div>
-                  <h4 className="text-base font-bold text-text">{inc.title}</h4>
-                  <p className="text-xs text-text-muted mt-1 line-clamp-2">{inc.description}</p>
-                  <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-border-subtle mt-3">
-                    <span>Location: {inc.location}</span>
-                    <span className="font-semibold text-text">
-                      Affected Students: {inc.affectedStudentCount ?? 0}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
+            <div className={`grid grid-cols-1 ${selectedIncident ? 'lg:grid-cols-12 gap-6 items-start' : 'gap-4'}`}>
+              {/* Incident Column */}
+              <div className={selectedIncident ? 'lg:col-span-5 space-y-3' : 'grid grid-cols-1 md:grid-cols-2 gap-3'}>
+                {incidents.map((inc) => {
+                  const isSelected = selectedIncident?.incidentId === inc.incidentId;
+                  return (
+                    <motion.div
+                      key={inc.incidentId}
+                      layout
+                      variants={{
+                        hidden: { opacity: 0, y: 10 },
+                        show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+                      }}
+                      onClick={() => handleSelectIncident(inc)}
+                      className={`p-4 bg-surface border rounded-xl shadow-xs cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-primary ring-2 ring-primary/40 shadow-md bg-surface-hover'
+                          : 'border-border hover:border-accent hover:shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-semibold text-text-muted">
+                            INC-{inc.incidentId}
+                          </span>
+                          <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-urgency-urgent-bg text-urgency-urgent-text border border-urgency-urgent-border">
+                            {inc.severity}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-surface-muted text-text border border-border"
+                            title="Total Tickets"
+                          >
+                            {inc.ticketCount ?? 0} {inc.ticketCount === 1 ? 'ticket' : 'tickets'}
+                          </span>
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-status-progress-bg text-status-progress-text"
+                            title="Open Tickets"
+                          >
+                            {inc.openTicketCount ?? 0} open
+                          </span>
+                        </div>
+                      </div>
+                      <h4 className="text-base font-bold text-text">{inc.title}</h4>
+                      <p className="text-xs text-text-muted mt-1 line-clamp-2">{inc.description}</p>
+                      <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-border-subtle mt-3">
+                        <span>Location: {inc.location}</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Linked Tickets Panel (Beside incident column on lg screens, below on smaller screens) */}
+              {selectedIncident && (
+                <div className="lg:col-span-7">
+                  <ErrorBoundary key={selectedIncident.incidentId}>
+                    <div className="p-4 bg-surface border border-border rounded-xl shadow-xs space-y-4 sticky top-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border-subtle">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-mono text-xs font-semibold text-text-muted">
+                              INC-{selectedIncident.incidentId}
+                            </span>
+                            <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-urgency-urgent-bg text-urgency-urgent-text border border-urgency-urgent-border">
+                              {selectedIncident.severity}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-surface-muted text-text border border-border">
+                              {selectedIncident.ticketCount ?? 0} {selectedIncident.ticketCount === 1 ? 'ticket' : 'tickets'}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-status-progress-bg text-status-progress-text">
+                              {selectedIncident.openTicketCount ?? 0} open
+                            </span>
+                          </div>
+                          <h4 className="text-base font-bold text-text">{selectedIncident.title}</h4>
+                          <p className="text-xs text-text-muted mt-0.5">{selectedIncident.description}</p>
+                          <p className="text-xs text-text-dim mt-1">
+                            Location: <span className="text-text-muted">{selectedIncident.location}</span>
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedIncident(null);
+                            setIncidentTickets([]);
+                            setIncidentTicketsError(null);
+                          }}
+                          className="self-start sm:self-center px-2.5 py-1 text-xs font-medium rounded-md border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                        >
+                          Deselect
+                        </button>
+                      </div>
+
+                      <div>
+                        <h5 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3">
+                          Linked Tickets ({incidentTickets ? incidentTickets.length : 0})
+                        </h5>
+
+                        {incidentTicketsError ? (
+                          <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger text-xs font-semibold">
+                            {incidentTicketsError}
+                          </div>
+                        ) : isLoadingIncidentTickets ? (
+                          <CardSkeleton count={2} />
+                        ) : !incidentTickets || incidentTickets.length === 0 ? (
+                          <EmptyState
+                            title="No tickets linked"
+                            description="No tickets linked to this incident"
+                            iconType="tickets"
+                          />
+                        ) : (
+                          <div className="grid grid-cols-1 gap-3 max-h-[72vh] overflow-y-auto pr-1">
+                            {incidentTickets.map((ticket) => (
+                              <TicketCard
+                                key={ticket.ticketId}
+                                ticket={ticket}
+                                userRole={user?.role}
+                                onClick={() => handleSelectTicket(ticket)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </ErrorBoundary>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -640,6 +899,96 @@ export const AdminPage: React.FC = () => {
               </motion.div>
             ))}
           </motion.div>
+        </div>
+      )}
+
+      {/* Tab 7: Closed Log */}
+      {activeTab === 'CLOSED_LOG' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-surface border border-border rounded-xl shadow-xs">
+            <div>
+              <h3 className="text-sm font-bold text-text">Closed Tickets Audit Log</h3>
+              <p className="text-xs text-text-muted mt-0.5">
+                Audit trail of resolved tickets, closure notes, author sign-off, and reassignment count.
+              </p>
+            </div>
+            <div className="w-full sm:w-64">
+              <input
+                type="text"
+                value={closedLogSearch}
+                onChange={(e) => setClosedLogSearch(e.target.value)}
+                placeholder="Search closed log..."
+                className="w-full px-3 py-1.5 text-xs rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring"
+              />
+            </div>
+          </div>
+
+          {filteredClosedLog.length === 0 ? (
+            <div className="text-center py-16 bg-surface border border-border rounded-xl p-6">
+              <p className="text-sm font-semibold text-text">No closed tickets found</p>
+              <p className="text-xs text-text-muted mt-1">
+                {closedLogSearch
+                  ? 'No closed tickets match your search criteria.'
+                  : 'Closed tickets with closure notes will appear here once archived by an administrator.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {filteredClosedLog.map((log) => (
+                <div
+                  key={log.ticketNumber}
+                  onClick={() => handleSelectTicket({ ticketNumber: log.ticketNumber } as any)}
+                  className="bento-card p-4 sm:p-5 rounded-2xl border border-border bg-surface hover:border-accent cursor-pointer transition-all duration-normal shadow-xs hover:shadow-md"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-primary">
+                        {log.ticketNumber}
+                      </span>
+                      <span className="text-xs text-text-dim">•</span>
+                      <span className="text-xs font-semibold text-text-muted">
+                        {log.category}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-status-closed-bg text-status-closed-text">
+                        CLOSED
+                      </span>
+                      {log.reassignmentCount > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold rounded-md bg-indigo-100 text-indigo-900 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-200 dark:border-indigo-700/50">
+                          {log.reassignmentCount} Reassignment{log.reassignmentCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    <time className="text-xs text-text-dim">
+                      Closed {new Date(log.closedAt).toLocaleString()}
+                    </time>
+                  </div>
+
+                  <h4 className="text-base font-bold text-text mb-1 tracking-tight">
+                    {log.title}
+                  </h4>
+
+                  <div className="text-xs text-text-muted flex items-center gap-4 flex-wrap my-2">
+                    <span>
+                      Agent: <strong className="text-text">{log.assignedAgentName || 'Unassigned'}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                      Closed by: <strong className="text-text">{log.closedBy}</strong>
+                    </span>
+                  </div>
+
+                  {log.closureNote && (
+                    <div className="mt-2.5 p-3 rounded-xl bg-surface-muted/60 border border-border-subtle text-xs text-text leading-relaxed">
+                      <span className="font-semibold text-text-muted mr-1.5 uppercase tracking-wider text-[10px] block sm:inline">
+                        Closure Note:
+                      </span>
+                      <span className="italic">&ldquo;{log.closureNote}&rdquo;</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

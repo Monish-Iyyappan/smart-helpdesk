@@ -72,6 +72,7 @@ export default {
           text: 'var(--color-overdue-text)',
           border: 'var(--color-overdue-border)',
           glow: 'var(--color-overdue-glow)',
+          'card-bg': 'var(--color-overdue-card-bg)',
         },
         status: {
           open: {
