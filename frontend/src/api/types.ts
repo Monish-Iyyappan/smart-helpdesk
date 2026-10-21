@@ -8,7 +8,7 @@ export type TicketStatus = 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'RESOLVED' | 'C
 
 export type IncidentSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
-export type CommentType = 'GENERAL' | 'ISSUE' | 'REASSIGNMENT' | 'CLOSURE';
+export type CommentType = 'GENERAL' | 'ISSUE' | 'REASSIGNMENT' | 'CLOSURE' | 'REOPEN';
 
 export interface User {
   userId: number;

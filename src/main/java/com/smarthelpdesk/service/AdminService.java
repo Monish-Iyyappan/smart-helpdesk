@@ -105,27 +105,29 @@ public class AdminService {
         return ticketDAO.findClosedTicketsLog();
     }
 
-    public Ticket reopen(Integer ticketId, Integer adminUserId) {
-        checkAdmin(adminUserId);
+    @Transactional
+    public Ticket reopen(Integer ticketId, Integer adminUserId, String reason) {
+        User admin = checkAdmin(adminUserId);
 
         if (ticketId == null) {
             throw new IllegalArgumentException("Ticket ID cannot be null");
         }
 
-        Ticket ticket = ticketDAO.findById(ticketId)
+        Ticket ticket = ticketDAO.findByIdForUpdate(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
-        if ("CLOSED".equalsIgnoreCase(ticket.getStatus())) {
-            throw new IllegalStateException("CLOSED tickets cannot be reopened");
-        }
+        String trimmedReason = AssignmentPolicy.validateReopen(reason, ticket.getStatus());
 
-        if (!"RESOLVED".equalsIgnoreCase(ticket.getStatus())) {
-            throw new IllegalStateException("Can only reopen a ticket from RESOLVED status. Current status: " + ticket.getStatus());
-        }
+        Comment reopenComment = new Comment(ticketId, admin.getUserId(), trimmedReason, "REOPEN");
+        commentDAO.insert(reopenComment);
 
         ticketDAO.updateStatus(ticketId, "IN_PROGRESS");
         ticket.setStatus("IN_PROGRESS");
         return ticket;
+    }
+
+    public Ticket reopen(Integer ticketId, Integer adminUserId) {
+        return reopen(ticketId, adminUserId, "Reopened by administrator.");
     }
 
     public List<Ticket> viewAll(Integer adminUserId) {

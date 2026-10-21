@@ -188,11 +188,16 @@ public class AdminMenu {
             return;
         }
         Ticket ticket = ticketService.getByTicketNumber(ticketNum, user.getUserId());
+        String reason = io.readLine("Enter reopen reason (10-500 chars): ");
+        if (reason == null || reason.trim().length() < 10 || reason.trim().length() > 500) {
+            System.out.println("Reopen reason must be between 10 and 500 characters.");
+            return;
+        }
         if (!io.confirm("Are you sure you want to REOPEN ticket " + ticketNum + "? (y/n): ")) {
             System.out.println("Operation cancelled.");
             return;
         }
-        adminService.reopen(ticket.getTicketId(), user.getUserId());
+        adminService.reopen(ticket.getTicketId(), user.getUserId(), reason.trim());
         System.out.println("Ticket reopened to IN_PROGRESS successfully.");
     }
 

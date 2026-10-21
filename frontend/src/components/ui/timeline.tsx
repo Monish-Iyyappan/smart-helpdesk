@@ -50,6 +50,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         const isIssue = item.commentType === 'ISSUE';
         const isReassignment = item.commentType === 'REASSIGNMENT';
         const isClosure = item.commentType === 'CLOSURE';
+        const isReopen = item.commentType === 'REOPEN';
 
         const cardBorderBg = isIssue
           ? 'border-amber-400/80 bg-amber-50/60 dark:border-amber-500/40 dark:bg-amber-950/25'
@@ -57,6 +58,8 @@ export const Timeline: React.FC<TimelineProps> = ({
           ? 'border-indigo-300/80 bg-indigo-50/60 dark:border-indigo-500/40 dark:bg-indigo-950/25'
           : isClosure
           ? 'border-rose-300/80 bg-rose-50/60 dark:border-rose-500/40 dark:bg-rose-950/25'
+          : isReopen
+          ? 'border-teal-300/80 bg-teal-50/60 dark:border-teal-500/40 dark:bg-teal-950/25'
           : 'border-border bg-surface';
 
         return (
@@ -70,6 +73,8 @@ export const Timeline: React.FC<TimelineProps> = ({
                   ? 'bg-amber-600 text-white'
                   : isReassignment
                   ? 'bg-indigo-600 text-white'
+                  : isReopen
+                  ? 'bg-teal-600 text-white'
                   : item.isStaff
                   ? 'bg-primary text-primary-text'
                   : 'bg-secondary text-secondary-text'

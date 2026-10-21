@@ -48,6 +48,11 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   const [closeNote, setCloseNote] = useState('');
   const [isSubmittingClose, setIsSubmittingClose] = useState(false);
 
+  // Reopen Dialog State
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
+  const [isSubmittingReopen, setIsSubmittingReopen] = useState(false);
+
   // Assignment History Panel State
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<AssignmentRecord[]>([]);
@@ -59,7 +64,6 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
   const currentAgentName = ticket.assignedAgentName || (ticket.assignedTo ? `Agent ${ticket.assignedTo}` : null);
   const hasCurrentAgent = Boolean(currentAgentName);
-  const isResolvedOrClosed = ticket.status === 'RESOLVED' || ticket.status === 'CLOSED';
 
   const selectedAgent = agents.find((a) => a.userId === Number(selectedAgentId));
 
@@ -144,7 +148,9 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
       setSelectedAgentId('');
       onRefresh();
     } catch (err: any) {
-      showToast(err?.message || 'Failed to reassign ticket', 'error');
+      if (!err?.status || ![400, 403, 409].includes(err.status)) {
+        showToast(err?.message || 'Failed to reassign ticket', 'error');
+      }
     } finally {
       setIsSubmittingReassign(false);
     }
@@ -162,22 +168,31 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
       setCloseNote('');
       onRefresh();
     } catch (err: any) {
-      showToast(err?.message || 'Failed to close ticket', 'error');
+      if (!err?.status || ![400, 403, 409].includes(err.status)) {
+        showToast(err?.message || 'Failed to close ticket', 'error');
+      }
     } finally {
       setIsSubmittingClose(false);
     }
   };
 
-  const handleReopenTicket = async () => {
-    setIsUpdatingStatus(true);
+  const handleConfirmReopen = async () => {
+    const trimmed = reopenReason.trim();
+    if (trimmed.length < 10 || trimmed.length > 500 || isSubmittingReopen) return;
+
+    setIsSubmittingReopen(true);
     try {
-      await api.tickets.updateStatus(ticket.ticketId, 'IN_PROGRESS');
+      await api.admin.reopenTicket(ticket.ticketId, trimmed);
       showToast('Ticket reopened to IN_PROGRESS', 'success');
+      setShowReopenModal(false);
+      setReopenReason('');
       onRefresh();
     } catch (err: any) {
-      showToast(err?.message || 'Failed to reopen ticket', 'error');
+      if (!err?.status || ![400, 403, 409].includes(err.status)) {
+        showToast(err?.message || 'Failed to reopen ticket', 'error');
+      }
     } finally {
-      setIsUpdatingStatus(false);
+      setIsSubmittingReopen(false);
     }
   };
 
@@ -198,6 +213,9 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
   const closeTrimmedLen = closeNote.trim().length;
   const isCloseValid = closeTrimmedLen >= 10 && closeTrimmedLen <= 500;
+
+  const reopenTrimmedLen = reopenReason.trim().length;
+  const isReopenValid = reopenTrimmedLen >= 10 && reopenTrimmedLen <= 500;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
@@ -420,9 +438,13 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
               <span className="text-xs font-bold text-text-muted block">Admin Actions:</span>
 
               {/* Assign/Reassign Section */}
-              {isResolvedOrClosed ? (
+              {ticket.status === 'CLOSED' ? (
                 <div className="text-xs text-text-muted italic p-2.5 rounded-lg bg-surface/50 border border-border-subtle">
-                  Ticket is <span className="font-semibold text-text">{ticket.status}</span>. Reopen first to assign or reassign.
+                  Closed tickets cannot be changed.
+                </div>
+              ) : ticket.status === 'RESOLVED' ? (
+                <div className="text-xs text-text-muted italic p-2.5 rounded-lg bg-surface/50 border border-border-subtle">
+                  Ticket is <span className="font-semibold text-text">RESOLVED</span>. Reopen first to assign or reassign.
                 </div>
               ) : (
                 <div className="flex items-center gap-2 flex-wrap">
@@ -462,7 +484,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                 <div className="flex items-center gap-2 pt-2 border-t border-border-subtle">
                   <button
                     type="button"
-                    disabled={isUpdatingStatus}
+                    disabled={isUpdatingStatus || isSubmittingClose || isSubmittingReopen}
                     onClick={() => {
                       setCloseNote('');
                       setShowCloseModal(true);
@@ -471,16 +493,17 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   >
                     Close Ticket
                   </button>
-                  <StatefulButton
+                  <button
                     type="button"
-                    disabled={isUpdatingStatus}
-                    onClick={handleReopenTicket}
-                    className="border border-border bg-surface text-text hover:bg-surface-hover"
-                    loadingText="Reopening..."
-                    successText="Reopened!"
+                    disabled={isUpdatingStatus || isSubmittingClose || isSubmittingReopen}
+                    onClick={() => {
+                      setReopenReason('');
+                      setShowReopenModal(true);
+                    }}
+                    className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors shadow-xs focus-ring"
                   >
-                    Reopen Ticket (IN_PROGRESS)
-                  </StatefulButton>
+                    Reopen Ticket
+                  </button>
                 </div>
               )}
             </div>
@@ -775,6 +798,79 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-danger hover:bg-danger-hover text-white disabled:opacity-50 transition-colors shadow-xs focus-ring"
                 >
                   {isSubmittingClose ? 'Closing...' : 'Close Ticket'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Reopen Ticket Dialog */}
+      <AnimatePresence>
+        {showReopenModal && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reopen-modal-title"
+            className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.15 }}
+              className="glass-panel border border-border rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl bg-surface"
+            >
+              <h3 id="reopen-modal-title" className="text-base font-bold text-text mb-2">
+                Reopen Ticket
+              </h3>
+              <p className="text-xs text-text-muted mb-4">
+                Explain why ticket <strong className="text-text">{ticket.ticketNumber}</strong> is being reopened to IN_PROGRESS.
+              </p>
+
+              <div className="space-y-1.5 mb-4">
+                <label htmlFor="reopen-reason" className="block text-xs font-semibold text-text">
+                  Reopen Reason <span className="text-danger">*</span>
+                </label>
+                <textarea
+                  id="reopen-reason"
+                  rows={3}
+                  value={reopenReason}
+                  onChange={(e) => setReopenReason(e.target.value)}
+                  placeholder="Explain why this ticket is being reopened (10-500 characters)..."
+                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring"
+                  required
+                />
+                <div className="flex justify-between items-center text-[11px]">
+                  <span
+                    className={
+                      isReopenValid
+                        ? 'text-success font-semibold'
+                        : 'text-text-dim font-medium'
+                    }
+                  >
+                    {reopenTrimmedLen} / 500 characters
+                    {reopenTrimmedLen < 10 ? ` (${10 - reopenTrimmedLen} more needed)` : ''}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border-subtle">
+                <button
+                  type="button"
+                  disabled={isSubmittingReopen}
+                  onClick={() => setShowReopenModal(false)}
+                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!isReopenValid || isSubmittingReopen}
+                  onClick={handleConfirmReopen}
+                  className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-xs focus-ring"
+                >
+                  {isSubmittingReopen ? 'Reopening...' : 'Confirm Reopen'}
                 </button>
               </div>
             </motion.div>

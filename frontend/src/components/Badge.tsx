@@ -85,7 +85,7 @@ export const RequestedPriorityBadge: React.FC<RequestedPriorityBadgeProps> = ({ 
 };
 
 export interface CommentTypeBadgeProps {
-  type?: 'GENERAL' | 'ISSUE' | 'REASSIGNMENT' | 'CLOSURE' | string;
+  type?: 'GENERAL' | 'ISSUE' | 'REASSIGNMENT' | 'CLOSURE' | 'REOPEN' | string;
 }
 
 export const CommentTypeBadge: React.FC<CommentTypeBadgeProps> = ({ type }) => {
@@ -107,6 +107,10 @@ export const CommentTypeBadge: React.FC<CommentTypeBadgeProps> = ({ type }) => {
     classes =
       'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-600/50 font-semibold';
     label = 'CLOSURE';
+  } else if (norm === 'REOPEN') {
+    classes =
+      'bg-teal-100 text-teal-900 border-teal-300 dark:bg-teal-950/60 dark:text-teal-200 dark:border-teal-600/50 font-semibold';
+    label = 'REOPEN';
   }
 
   return (

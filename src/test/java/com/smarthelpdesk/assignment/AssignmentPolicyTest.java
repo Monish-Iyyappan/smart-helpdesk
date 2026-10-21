@@ -280,7 +280,7 @@ class AssignmentPolicyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"REASSIGNMENT", "reassignment", "CLOSURE", "closure"})
+    @ValueSource(strings = {"REASSIGNMENT", "reassignment", "CLOSURE", "closure", "REOPEN", "reopen"})
     @DisplayName("validateUserCommentType rejects system-only comment types with 400 (IllegalArgumentException)")
     void validateUserCommentTypeRejectsSystemOnlyTypes(String systemType) {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
@@ -323,5 +323,79 @@ class AssignmentPolicyTest {
                 AssignmentPolicy.validateIssueCommentActor(nonStudentRole, true)
         );
         assertTrue(ex.getMessage().contains("only allowed for student"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"RESOLVED", "resolved", "Resolved"})
+    @DisplayName("validateReopen succeeds on RESOLVED status with valid reason")
+    void validateReopenSucceedsOnResolvedStatus(String status) {
+        String result = AssignmentPolicy.validateReopen("Valid reopen reason here", status);
+        assertEquals("Valid reopen reason here", result);
+    }
+
+    @Test
+    @DisplayName("validateReopen trims whitespace and accepts valid reasons at 10 and 500 boundaries")
+    void validateReopenAcceptsValidReasonsAtBoundaries() {
+        assertEquals("1234567890", AssignmentPolicy.validateReopen("  1234567890  ", "RESOLVED"));
+        String exact500 = "r".repeat(500);
+        assertEquals(exact500, AssignmentPolicy.validateReopen(" " + exact500 + " ", "RESOLVED"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"CLOSED", "closed", "Closed"})
+    @DisplayName("validateReopen rejects CLOSED status with 409 (IllegalStateException) stating closed tickets cannot be changed")
+    void validateReopenRejectsClosedStatus(String closedStatus) {
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                AssignmentPolicy.validateReopen("Valid reopen reason here", closedStatus)
+        );
+        assertTrue(ex.getMessage().contains("Closed tickets cannot be changed"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"OPEN", "ASSIGNED", "IN_PROGRESS", "open", "assigned", "in_progress", "PENDING"})
+    @DisplayName("validateReopen rejects non-RESOLVED status with 409 (IllegalStateException)")
+    void validateReopenRejectsNonResolvedStatus(String nonResolvedStatus) {
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                AssignmentPolicy.validateReopen("Valid reopen reason here", nonResolvedStatus)
+        );
+        assertTrue(ex.getMessage().contains("Ticket must be in RESOLVED status to be reopened"));
+    }
+
+    @Test
+    @DisplayName("validateReopen rejects null status with 409 (IllegalStateException)")
+    void validateReopenRejectsNullStatus() {
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                AssignmentPolicy.validateReopen("Valid reopen reason here", null)
+        );
+        assertTrue(ex.getMessage().contains("Ticket status cannot be null"));
+    }
+
+    @Test
+    @DisplayName("validateReopen rejects null reason with 400 (IllegalArgumentException)")
+    void validateReopenRejectsNullReason() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                AssignmentPolicy.validateReopen(null, "RESOLVED")
+        );
+        assertTrue(ex.getMessage().contains("Reopen reason cannot be null"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   ", "too short", "123456789", "  123456789  "})
+    @DisplayName("validateReopen rejects reason shorter than 10 trimmed characters with 400 (IllegalArgumentException)")
+    void validateReopenRejectsTooShortReason(String shortReason) {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                AssignmentPolicy.validateReopen(shortReason, "RESOLVED")
+        );
+        assertTrue(ex.getMessage().contains("between 10 and 500 characters"));
+    }
+
+    @Test
+    @DisplayName("validateReopen rejects reason longer than 500 trimmed characters with 400 (IllegalArgumentException)")
+    void validateReopenRejectsTooLongReason() {
+        String tooLong = "a".repeat(501);
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                AssignmentPolicy.validateReopen(tooLong, "RESOLVED")
+        );
+        assertTrue(ex.getMessage().contains("between 10 and 500 characters"));
     }
 }

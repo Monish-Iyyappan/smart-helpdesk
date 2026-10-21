@@ -104,8 +104,11 @@ export const api = {
       }),
     closedTickets: () =>
       request<ClosedTicketLogItem[]>('/api/admin/tickets/closed', { method: 'GET' }),
-    reopenTicket: (ticketId: number) =>
-      request<TicketItem>(`/api/admin/tickets/${ticketId}/reopen`, { method: 'PUT' }),
+    reopenTicket: (ticketId: number, reason: string) =>
+      request<TicketItem>(`/api/admin/tickets/${ticketId}/reopen`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      }),
     linkTicket: (incidentId: number, ticketId: number) =>
       request<{ message: string; ticketId: number; incidentId: number }>(
         `/api/admin/incidents/${incidentId}/tickets/${ticketId}`,

@@ -6,6 +6,7 @@ import com.smarthelpdesk.dto.AssignTicketRequest;
 import com.smarthelpdesk.dto.CloseTicketRequest;
 import com.smarthelpdesk.dto.ClosedTicketResponse;
 import com.smarthelpdesk.dto.CreateAgentRequest;
+import com.smarthelpdesk.dto.ReopenTicketRequest;
 import com.smarthelpdesk.dto.TicketListResponse;
 import com.smarthelpdesk.dto.UrgencySummaryResponse;
 import com.smarthelpdesk.dto.UserResponse;
@@ -121,10 +122,14 @@ public class AdminController {
         return ResponseEntity.ok(closedTickets);
     }
 
-    @PutMapping("/tickets/{ticketId}/reopen")
-    public ResponseEntity<Ticket> reopen(@PathVariable Integer ticketId, Authentication authentication) {
+    @RequestMapping(value = "/tickets/{ticketId}/reopen", method = {RequestMethod.POST, RequestMethod.PUT})
+    public ResponseEntity<Ticket> reopen(
+            @PathVariable Integer ticketId,
+            @RequestBody(required = false) ReopenTicketRequest request,
+            Authentication authentication) {
         Integer actorUserId = SecurityUtils.getActorUserId(authentication);
-        Ticket ticket = adminService.reopen(ticketId, actorUserId);
+        String reason = (request != null) ? request.reason() : null;
+        Ticket ticket = adminService.reopen(ticketId, actorUserId, reason);
         return ResponseEntity.ok(ticket);
     }
 

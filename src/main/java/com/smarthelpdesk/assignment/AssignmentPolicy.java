@@ -17,7 +17,7 @@ public class AssignmentPolicy {
     private static final Set<String> REOPEN_REQUIRED_STATUSES = Set.of("RESOLVED", "CLOSED");
 
     private static final Set<String> ALLOWED_USER_COMMENT_TYPES = Set.of("GENERAL", "ISSUE");
-    private static final Set<String> SYSTEM_ONLY_COMMENT_TYPES = Set.of("REASSIGNMENT", "CLOSURE");
+    private static final Set<String> SYSTEM_ONLY_COMMENT_TYPES = Set.of("REASSIGNMENT", "CLOSURE", "REOPEN");
 
     /**
      * Determines whether the operation is an initial assignment or a reassignment.
@@ -129,6 +129,42 @@ public class AssignmentPolicy {
         if (trimmed.length() < 10 || trimmed.length() > 500) {
             throw new IllegalArgumentException(
                     "Closure note must be between 10 and 500 characters (got " + trimmed.length() + ")"
+            );
+        }
+        return trimmed;
+    }
+
+    /**
+     * Pure validation for reopening a ticket.
+     * Ticket must be in RESOLVED status; CLOSED tickets cannot be changed.
+     * Reopen reason is required, trimmed length 10-500.
+     *
+     * @param reason raw reopen reason
+     * @param ticketStatus current ticket status
+     * @return trimmed reopen reason
+     * @throws IllegalArgumentException if reason is null or not 10-500 trimmed chars (maps to 400)
+     * @throws IllegalStateException if ticket status is not RESOLVED (maps to 409)
+     */
+    public static String validateReopen(String reason, String ticketStatus) {
+        if (ticketStatus == null) {
+            throw new IllegalStateException("Ticket status cannot be null");
+        }
+        String normalizedStatus = ticketStatus.trim().toUpperCase();
+        if ("CLOSED".equals(normalizedStatus)) {
+            throw new IllegalStateException("Closed tickets cannot be changed");
+        }
+        if (!"RESOLVED".equals(normalizedStatus)) {
+            throw new IllegalStateException(
+                    "Ticket must be in RESOLVED status to be reopened (current status: " + normalizedStatus + ")"
+            );
+        }
+        if (reason == null) {
+            throw new IllegalArgumentException("Reopen reason cannot be null");
+        }
+        String trimmed = reason.trim();
+        if (trimmed.length() < 10 || trimmed.length() > 500) {
+            throw new IllegalArgumentException(
+                    "Reopen reason must be between 10 and 500 characters (got " + trimmed.length() + ")"
             );
         }
         return trimmed;
