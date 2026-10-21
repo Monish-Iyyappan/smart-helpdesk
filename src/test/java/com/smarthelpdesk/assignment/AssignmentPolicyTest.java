@@ -219,4 +219,109 @@ class AssignmentPolicyTest {
                 comment
         );
     }
+
+    @Test
+    @DisplayName("validateClosureNote rejects null note with IllegalArgumentException")
+    void validateClosureNoteRejectsNull() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                AssignmentPolicy.validateClosureNote(null)
+        );
+        assertTrue(ex.getMessage().contains("cannot be null"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   ", "Too short", "  123456789  "})
+    @DisplayName("validateClosureNote rejects notes shorter than 10 trimmed characters")
+    void validateClosureNoteRejectsTooShort(String shortNote) {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                AssignmentPolicy.validateClosureNote(shortNote)
+        );
+        assertTrue(ex.getMessage().contains("between 10 and 500 characters"));
+    }
+
+    @Test
+    @DisplayName("validateClosureNote rejects notes longer than 500 trimmed characters")
+    void validateClosureNoteRejectsTooLong() {
+        String longNote = "x".repeat(501);
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                AssignmentPolicy.validateClosureNote(longNote)
+        );
+        assertTrue(ex.getMessage().contains("between 10 and 500 characters"));
+    }
+
+    @Test
+    @DisplayName("validateClosureNote trims and accepts valid notes at 10 and 500 boundary lengths")
+    void validateClosureNoteAcceptsValidNotesAtBoundaries() {
+        assertEquals("1234567890", AssignmentPolicy.validateClosureNote("  1234567890  "));
+        String exact500 = "a".repeat(500);
+        assertEquals(exact500, AssignmentPolicy.validateClosureNote(" " + exact500 + " "));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   "})
+    @DisplayName("validateUserCommentType defaults null or blank to GENERAL")
+    void validateUserCommentTypeDefaultsToGeneral(String blank) {
+        assertEquals("GENERAL", AssignmentPolicy.validateUserCommentType(null));
+        assertEquals("GENERAL", AssignmentPolicy.validateUserCommentType(blank));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"GENERAL", "general", "General"})
+    @DisplayName("validateUserCommentType accepts GENERAL case-insensitively")
+    void validateUserCommentTypeAcceptsGeneral(String general) {
+        assertEquals("GENERAL", AssignmentPolicy.validateUserCommentType(general));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ISSUE", "issue", "Issue"})
+    @DisplayName("validateUserCommentType accepts ISSUE case-insensitively")
+    void validateUserCommentTypeAcceptsIssue(String issue) {
+        assertEquals("ISSUE", AssignmentPolicy.validateUserCommentType(issue));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"REASSIGNMENT", "reassignment", "CLOSURE", "closure"})
+    @DisplayName("validateUserCommentType rejects system-only comment types with 400 (IllegalArgumentException)")
+    void validateUserCommentTypeRejectsSystemOnlyTypes(String systemType) {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                AssignmentPolicy.validateUserCommentType(systemType)
+        );
+        assertTrue(ex.getMessage().contains("system-only"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"FEEDBACK", "INTERNAL", "STATUS_CHANGE", "RANDOM"})
+    @DisplayName("validateUserCommentType rejects unknown comment types with 400 (IllegalArgumentException)")
+    void validateUserCommentTypeRejectsUnknownTypes(String unknownType) {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                AssignmentPolicy.validateUserCommentType(unknownType)
+        );
+        assertTrue(ex.getMessage().contains("Invalid comment type"));
+    }
+
+    @Test
+    @DisplayName("validateIssueCommentActor succeeds for STUDENT creators or participants")
+    void validateIssueCommentActorSucceedsForStudentCreatorOrParticipant() {
+        AssignmentPolicy.validateIssueCommentActor("STUDENT", true);
+        AssignmentPolicy.validateIssueCommentActor("student", true);
+    }
+
+    @Test
+    @DisplayName("validateIssueCommentActor fails with SecurityException for STUDENT who is not creator/participant")
+    void validateIssueCommentActorFailsForUnrelatedStudent() {
+        SecurityException ex = assertThrows(SecurityException.class, () ->
+                AssignmentPolicy.validateIssueCommentActor("STUDENT", false)
+        );
+        assertTrue(ex.getMessage().contains("only allowed for student"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"AGENT", "ADMIN", "STAFF", "MANAGER"})
+    @DisplayName("validateIssueCommentActor fails with SecurityException for non-STUDENT roles even if participant")
+    void validateIssueCommentActorFailsForNonStudentRoles(String nonStudentRole) {
+        SecurityException ex = assertThrows(SecurityException.class, () ->
+                AssignmentPolicy.validateIssueCommentActor(nonStudentRole, true)
+        );
+        assertTrue(ex.getMessage().contains("only allowed for student"));
+    }
 }

@@ -1,6 +1,7 @@
 package com.smarthelpdesk.service;
 
 import com.smarthelpdesk.dao.CategoryDAO;
+import com.smarthelpdesk.assignment.AssignmentPolicy;
 import com.smarthelpdesk.dao.CommentDAO;
 import com.smarthelpdesk.dao.IncidentDAO;
 import com.smarthelpdesk.dao.TicketDAO;
@@ -119,6 +120,10 @@ public class TicketService {
     }
 
     public Comment addComment(Integer ticketId, Integer actorUserId, String text) {
+        return addComment(ticketId, actorUserId, text, "GENERAL");
+    }
+
+    public Comment addComment(Integer ticketId, Integer actorUserId, String text, String rawCommentType) {
         if (ticketId == null) {
             throw new IllegalArgumentException("Ticket ID cannot be null");
         }
@@ -128,6 +133,8 @@ public class TicketService {
         if (text == null || text.trim().isEmpty()) {
             throw new IllegalArgumentException("Comment text cannot be blank");
         }
+
+        String commentType = AssignmentPolicy.validateUserCommentType(rawCommentType);
 
         User actor = userDAO.findById(actorUserId)
                 .orElseThrow(() -> new SecurityException("User not found: " + actorUserId));
@@ -147,8 +154,11 @@ public class TicketService {
             throw new SecurityException("User is not authorized to comment on this ticket");
         }
 
-        Comment comment = new Comment(ticketId, actorUserId, text.trim());
-        ticketDAO.findById(ticketId);
+        if ("ISSUE".equalsIgnoreCase(commentType)) {
+            AssignmentPolicy.validateIssueCommentActor(actor.getRole(), isCreator || isParticipant);
+        }
+
+        Comment comment = new Comment(ticketId, actorUserId, text.trim(), commentType);
         commentDAO.insert(comment);
         return comment;
     }

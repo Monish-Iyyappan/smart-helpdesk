@@ -8,7 +8,12 @@ import com.smarthelpdesk.dto.TicketListResponse;
 import com.smarthelpdesk.dto.UrgencySummaryResponse;
 import com.smarthelpdesk.model.Ticket;
 import com.smarthelpdesk.model.User;
+import com.smarthelpdesk.assignment.AssignmentPolicy;
 import com.smarthelpdesk.assignment.AssignmentService;
+import com.smarthelpdesk.dao.CommentDAO;
+import com.smarthelpdesk.dto.ClosedTicketResponse;
+import com.smarthelpdesk.model.Comment;
+import org.springframework.transaction.annotation.Transactional;
 import com.smarthelpdesk.priority.UrgencyService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,16 +32,19 @@ public class AdminService {
     private final DashboardDAO dashboardDAO;
     private final UrgencyService urgencyService;
     private final AssignmentService assignmentService;
+    private final CommentDAO commentDAO;
 
     public AdminService(TicketDAO ticketDAO, UserDAO userDAO,
                         PasswordEncoder passwordEncoder, DashboardDAO dashboardDAO,
-                        UrgencyService urgencyService, AssignmentService assignmentService) {
+                        UrgencyService urgencyService, AssignmentService assignmentService,
+                        CommentDAO commentDAO) {
         this.ticketDAO = ticketDAO;
         this.userDAO = userDAO;
         this.passwordEncoder = passwordEncoder;
         this.dashboardDAO = dashboardDAO;
         this.urgencyService = urgencyService;
         this.assignmentService = assignmentService;
+        this.commentDAO = commentDAO;
     }
 
     private User checkAdmin(Integer adminUserId) {
@@ -59,14 +67,17 @@ public class AdminService {
         return assignmentService.assignTicket(ticketId, adminUserId, agentId, reason);
     }
 
-    public Ticket close(Integer ticketId, Integer adminUserId) {
-        checkAdmin(adminUserId);
+    @Transactional
+    public Ticket close(Integer ticketId, Integer adminUserId, String note) {
+        User admin = checkAdmin(adminUserId);
 
         if (ticketId == null) {
             throw new IllegalArgumentException("Ticket ID cannot be null");
         }
 
-        Ticket ticket = ticketDAO.findById(ticketId)
+        String trimmedNote = AssignmentPolicy.validateClosureNote(note);
+
+        Ticket ticket = ticketDAO.findByIdForUpdate(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
         if ("CLOSED".equalsIgnoreCase(ticket.getStatus())) {
@@ -77,9 +88,21 @@ public class AdminService {
             throw new IllegalStateException("Can only close a ticket from RESOLVED status. Current status: " + ticket.getStatus());
         }
 
+        Comment closureComment = new Comment(ticketId, admin.getUserId(), trimmedNote, "CLOSURE");
+        commentDAO.insert(closureComment);
+
         ticketDAO.updateStatus(ticketId, "CLOSED");
         ticket.setStatus("CLOSED");
         return ticket;
+    }
+
+    public Ticket close(Integer ticketId, Integer adminUserId) {
+        return close(ticketId, adminUserId, "Closed by administrator.");
+    }
+
+    public List<ClosedTicketResponse> getClosedTicketsLog(Integer adminUserId) {
+        checkAdmin(adminUserId);
+        return ticketDAO.findClosedTicketsLog();
     }
 
     public Ticket reopen(Integer ticketId, Integer adminUserId) {

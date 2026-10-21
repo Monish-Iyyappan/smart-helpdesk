@@ -169,11 +169,16 @@ public class AdminMenu {
             return;
         }
         Ticket ticket = ticketService.getByTicketNumber(ticketNum, user.getUserId());
+        String note = io.readLine("Enter closure note (10-500 chars): ");
+        if (note == null || note.trim().length() < 10 || note.trim().length() > 500) {
+            System.out.println("Closure note must be between 10 and 500 characters.");
+            return;
+        }
         if (!io.confirm("Are you sure you want to CLOSE ticket " + ticketNum + "? (y/n): ")) {
             System.out.println("Operation cancelled.");
             return;
         }
-        adminService.close(ticket.getTicketId(), user.getUserId());
+        adminService.close(ticket.getTicketId(), user.getUserId(), note.trim());
         System.out.println("Ticket closed successfully.");
     }
 

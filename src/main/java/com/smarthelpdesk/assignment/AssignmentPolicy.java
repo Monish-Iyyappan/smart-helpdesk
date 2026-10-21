@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Pure policy rules for ticket assignment and reassignment.
+ * Pure policy rules for ticket assignment, reassignment, and comment/closure validations.
  * Contains no database or I/O access.
  */
 @Component
@@ -15,6 +15,9 @@ public class AssignmentPolicy {
     public static final String TARGET_STATUS = "ASSIGNED";
     private static final Set<String> ALLOWED_STATUSES = Set.of("OPEN", "ASSIGNED", "IN_PROGRESS");
     private static final Set<String> REOPEN_REQUIRED_STATUSES = Set.of("RESOLVED", "CLOSED");
+
+    private static final Set<String> ALLOWED_USER_COMMENT_TYPES = Set.of("GENERAL", "ISSUE");
+    private static final Set<String> SYSTEM_ONLY_COMMENT_TYPES = Set.of("REASSIGNMENT", "CLOSURE");
 
     /**
      * Determines whether the operation is an initial assignment or a reassignment.
@@ -109,5 +112,68 @@ public class AssignmentPolicy {
     public String formatReassignmentComment(String fromAgentName, String toAgentName, String reason) {
         String trimmedReason = reason != null ? reason.trim() : "";
         return "Reassigned from " + fromAgentName + " to " + toAgentName + ". Reason: " + trimmedReason;
+    }
+
+    /**
+     * Validates a closure note. Note must be non-null and have trimmed length between 10 and 500 characters.
+     *
+     * @param note raw closure note
+     * @return trimmed closure note
+     * @throws IllegalArgumentException if null or not between 10 and 500 trimmed characters
+     */
+    public static String validateClosureNote(String note) {
+        if (note == null) {
+            throw new IllegalArgumentException("Closure note cannot be null");
+        }
+        String trimmed = note.trim();
+        if (trimmed.length() < 10 || trimmed.length() > 500) {
+            throw new IllegalArgumentException(
+                    "Closure note must be between 10 and 500 characters (got " + trimmed.length() + ")"
+            );
+        }
+        return trimmed;
+    }
+
+    /**
+     * Validates user-submitted comment type.
+     * Defaults to GENERAL when null or blank.
+     * Users may send only GENERAL or ISSUE; REASSIGNMENT and CLOSURE are system-only.
+     *
+     * @param commentType raw comment type
+     * @return normalized comment type (GENERAL or ISSUE)
+     * @throws IllegalArgumentException if invalid or system-only
+     */
+    public static String validateUserCommentType(String commentType) {
+        if (commentType == null || commentType.trim().isEmpty()) {
+            return "GENERAL";
+        }
+        String upper = commentType.trim().toUpperCase();
+        if (SYSTEM_ONLY_COMMENT_TYPES.contains(upper)) {
+            throw new IllegalArgumentException(
+                    "Comment type " + upper + " is system-only and cannot be sent by users"
+            );
+        }
+        if (!ALLOWED_USER_COMMENT_TYPES.contains(upper)) {
+            throw new IllegalArgumentException(
+                    "Invalid comment type: " + commentType + ". Allowed types are GENERAL and ISSUE"
+            );
+        }
+        return upper;
+    }
+
+    /**
+     * Validates that the actor is authorized to submit an ISSUE comment.
+     * ISSUE comments are allowed only for STUDENT-role actors who are the ticket creator or a participant.
+     *
+     * @param actorRole               actor's role
+     * @param isCreatorOrParticipant whether actor is creator or participant
+     * @throws SecurityException if unauthorized
+     */
+    public static void validateIssueCommentActor(String actorRole, boolean isCreatorOrParticipant) {
+        if (!"STUDENT".equalsIgnoreCase(actorRole) || !isCreatorOrParticipant) {
+            throw new SecurityException(
+                    "ISSUE comment type is only allowed for student ticket creators or participants"
+            );
+        }
     }
 }

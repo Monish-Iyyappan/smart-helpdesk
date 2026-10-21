@@ -3,6 +3,8 @@ package com.smarthelpdesk.controller;
 import com.smarthelpdesk.config.SecurityUtils;
 import com.smarthelpdesk.dto.AdminStatsResponse;
 import com.smarthelpdesk.dto.AssignTicketRequest;
+import com.smarthelpdesk.dto.CloseTicketRequest;
+import com.smarthelpdesk.dto.ClosedTicketResponse;
 import com.smarthelpdesk.dto.CreateAgentRequest;
 import com.smarthelpdesk.dto.TicketListResponse;
 import com.smarthelpdesk.dto.UrgencySummaryResponse;
@@ -99,11 +101,24 @@ public class AdminController {
         return ResponseEntity.ok(history);
     }
 
-    @PutMapping("/tickets/{ticketId}/close")
-    public ResponseEntity<Ticket> close(@PathVariable Integer ticketId, Authentication authentication) {
+    @RequestMapping(value = "/tickets/{ticketId}/close", method = {RequestMethod.POST, RequestMethod.PUT})
+    public ResponseEntity<Ticket> close(
+            @PathVariable Integer ticketId,
+            @RequestBody CloseTicketRequest request,
+            Authentication authentication) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request body cannot be null");
+        }
         Integer actorUserId = SecurityUtils.getActorUserId(authentication);
-        Ticket ticket = adminService.close(ticketId, actorUserId);
+        Ticket ticket = adminService.close(ticketId, actorUserId, request.note());
         return ResponseEntity.ok(ticket);
+    }
+
+    @GetMapping("/tickets/closed")
+    public ResponseEntity<List<ClosedTicketResponse>> getClosedTickets(Authentication authentication) {
+        Integer actorUserId = SecurityUtils.getActorUserId(authentication);
+        List<ClosedTicketResponse> closedTickets = adminService.getClosedTicketsLog(actorUserId);
+        return ResponseEntity.ok(closedTickets);
     }
 
     @PutMapping("/tickets/{ticketId}/reopen")
