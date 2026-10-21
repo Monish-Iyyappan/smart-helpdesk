@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type {
   AdminStats,
+  ClosedTicketLogItem,
   IncidentItem,
   IncidentSeverity,
   TicketDetail,
@@ -22,7 +23,7 @@ import { GreetingHeader } from '../components/GreetingHeader';
 import { EmptyState } from '../components/EmptyState';
 import { CardSkeleton } from '../components/ui/skeleton';
 
-type AdminTab = 'STATS' | 'ALL_TICKETS' | 'UNASSIGNED' | 'OVERDUE' | 'INCIDENTS' | 'AGENTS';
+type AdminTab = 'STATS' | 'ALL_TICKETS' | 'UNASSIGNED' | 'OVERDUE' | 'INCIDENTS' | 'AGENTS' | 'CLOSED_LOG';
 
 export const AdminPage: React.FC = () => {
   const { user, showToast } = useAuth();
@@ -36,6 +37,8 @@ export const AdminPage: React.FC = () => {
   const [overdueTickets, setOverdueTickets] = useState<TicketItem[]>([]);
   const [incidents, setIncidents] = useState<IncidentItem[]>([]);
   const [agents, setAgents] = useState<User[]>([]);
+  const [closedLog, setClosedLog] = useState<ClosedTicketLogItem[]>([]);
+  const [closedLogSearch, setClosedLogSearch] = useState('');
 
   // Filtering & Sorting for Tickets
   const [ticketSearch, setTicketSearch] = useState('');
@@ -71,13 +74,14 @@ export const AdminPage: React.FC = () => {
   const loadAllData = async () => {
     setIsLoading(true);
     try {
-      const [sData, aTickets, uTickets, oTickets, incList, agList] = await Promise.all([
+      const [sData, aTickets, uTickets, oTickets, incList, agList, cLog] = await Promise.all([
         api.admin.stats().catch(() => null),
         api.admin.tickets(),
         api.admin.unassignedTickets(),
         api.admin.overdueTickets(),
         api.incidents.list(),
         api.admin.listAgents(),
+        api.admin.closedTickets().catch(() => []),
       ]);
 
       setStats(sData);
@@ -86,6 +90,7 @@ export const AdminPage: React.FC = () => {
       setOverdueTickets(oTickets);
       setIncidents(incList);
       setAgents(agList);
+      setClosedLog(cLog || []);
     } catch {
       // Handled by global toast
     } finally {
@@ -116,6 +121,7 @@ export const AdminPage: React.FC = () => {
       }
     }
     loadAllData();
+    api.admin.closedTickets().then((cLog) => setClosedLog(cLog || [])).catch(() => {});
   };
 
   // Add Agent Submission
@@ -252,7 +258,22 @@ export const AdminPage: React.FC = () => {
     { id: 'OVERDUE', label: 'Overdue SLA', count: overdueTickets.length },
     { id: 'INCIDENTS', label: 'Incidents', count: incidents.length },
     { id: 'AGENTS', label: 'Agents', count: agents.length },
+    { id: 'CLOSED_LOG', label: 'Closed Log', count: closedLog.length },
   ];
+
+  const filteredClosedLog = useMemo(() => {
+    if (!closedLogSearch.trim()) return closedLog;
+    const q = closedLogSearch.toLowerCase();
+    return closedLog.filter(
+      (log) =>
+        log.ticketNumber.toLowerCase().includes(q) ||
+        log.title.toLowerCase().includes(q) ||
+        log.category.toLowerCase().includes(q) ||
+        (log.assignedAgentName && log.assignedAgentName.toLowerCase().includes(q)) ||
+        log.closedBy.toLowerCase().includes(q) ||
+        (log.closureNote && log.closureNote.toLowerCase().includes(q))
+    );
+  }, [closedLog, closedLogSearch]);
 
   return (
     <Shell
@@ -678,6 +699,96 @@ export const AdminPage: React.FC = () => {
               </motion.div>
             ))}
           </motion.div>
+        </div>
+      )}
+
+      {/* Tab 7: Closed Log */}
+      {activeTab === 'CLOSED_LOG' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-surface border border-border rounded-xl shadow-xs">
+            <div>
+              <h3 className="text-sm font-bold text-text">Closed Tickets Audit Log</h3>
+              <p className="text-xs text-text-muted mt-0.5">
+                Audit trail of resolved tickets, closure notes, author sign-off, and reassignment count.
+              </p>
+            </div>
+            <div className="w-full sm:w-64">
+              <input
+                type="text"
+                value={closedLogSearch}
+                onChange={(e) => setClosedLogSearch(e.target.value)}
+                placeholder="Search closed log..."
+                className="w-full px-3 py-1.5 text-xs rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring"
+              />
+            </div>
+          </div>
+
+          {filteredClosedLog.length === 0 ? (
+            <div className="text-center py-16 bg-surface border border-border rounded-xl p-6">
+              <p className="text-sm font-semibold text-text">No closed tickets found</p>
+              <p className="text-xs text-text-muted mt-1">
+                {closedLogSearch
+                  ? 'No closed tickets match your search criteria.'
+                  : 'Closed tickets with closure notes will appear here once archived by an administrator.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {filteredClosedLog.map((log) => (
+                <div
+                  key={log.ticketNumber}
+                  onClick={() => handleSelectTicket({ ticketNumber: log.ticketNumber } as any)}
+                  className="bento-card p-4 sm:p-5 rounded-2xl border border-border bg-surface hover:border-accent cursor-pointer transition-all duration-normal shadow-xs hover:shadow-md"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-primary">
+                        {log.ticketNumber}
+                      </span>
+                      <span className="text-xs text-text-dim">•</span>
+                      <span className="text-xs font-semibold text-text-muted">
+                        {log.category}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-status-closed-bg text-status-closed-text">
+                        CLOSED
+                      </span>
+                      {log.reassignmentCount > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold rounded-md bg-indigo-100 text-indigo-900 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-200 dark:border-indigo-700/50">
+                          {log.reassignmentCount} Reassignment{log.reassignmentCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    <time className="text-xs text-text-dim">
+                      Closed {new Date(log.closedAt).toLocaleString()}
+                    </time>
+                  </div>
+
+                  <h4 className="text-base font-bold text-text mb-1 tracking-tight">
+                    {log.title}
+                  </h4>
+
+                  <div className="text-xs text-text-muted flex items-center gap-4 flex-wrap my-2">
+                    <span>
+                      Agent: <strong className="text-text">{log.assignedAgentName || 'Unassigned'}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                      Closed by: <strong className="text-text">{log.closedBy}</strong>
+                    </span>
+                  </div>
+
+                  {log.closureNote && (
+                    <div className="mt-2.5 p-3 rounded-xl bg-surface-muted/60 border border-border-subtle text-xs text-text leading-relaxed">
+                      <span className="font-semibold text-text-muted mr-1.5 uppercase tracking-wider text-[10px] block sm:inline">
+                        Closure Note:
+                      </span>
+                      <span className="italic">&ldquo;{log.closureNote}&rdquo;</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

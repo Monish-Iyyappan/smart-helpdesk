@@ -1,7 +1,9 @@
 import { request } from './client';
 import type {
   AdminStats,
+  AssignmentRecord,
   Category,
+  ClosedTicketLogItem,
   CommentDetail,
   IncidentItem,
   TicketDetail,
@@ -39,10 +41,10 @@ export const api = {
         `/api/tickets/${encodeURIComponent(ticketNumber)}/join`,
         { method: 'POST' }
       ),
-    addComment: (ticketId: number, commentText: string) =>
+    addComment: (ticketId: number, commentText: string, commentType?: 'GENERAL' | 'ISSUE') =>
       request<CommentDetail>(`/api/tickets/${ticketId}/comments`, {
         method: 'POST',
-        body: JSON.stringify({ commentText }),
+        body: JSON.stringify({ commentText, ...(commentType ? { commentType } : {}) }),
       }),
     getComments: (ticketId: number) =>
       request<CommentDetail[]>(`/api/tickets/${ticketId}/comments`, { method: 'GET' }),
@@ -88,13 +90,20 @@ export const api = {
       request<TicketItem[]>('/api/admin/tickets/unassigned', { method: 'GET' }),
     urgencySummary: () =>
       request<UrgencySummary>('/api/admin/urgency/summary', { method: 'GET' }),
-    assignTicket: (ticketId: number, agentId: number) =>
+    assignTicket: (ticketId: number, agentId: number, reason?: string) =>
       request<TicketItem>(`/api/admin/tickets/${ticketId}/assign`, {
-        method: 'PUT',
-        body: JSON.stringify({ agentId }),
+        method: 'POST',
+        body: JSON.stringify({ agentId, ...(reason ? { reason } : {}) }),
       }),
-    closeTicket: (ticketId: number) =>
-      request<TicketItem>(`/api/admin/tickets/${ticketId}/close`, { method: 'PUT' }),
+    getAssignmentHistory: (ticketId: number) =>
+      request<AssignmentRecord[]>(`/api/admin/tickets/${ticketId}/assignments`, { method: 'GET' }),
+    closeTicket: (ticketId: number, note: string) =>
+      request<TicketItem>(`/api/admin/tickets/${ticketId}/close`, {
+        method: 'POST',
+        body: JSON.stringify({ note }),
+      }),
+    closedTickets: () =>
+      request<ClosedTicketLogItem[]>('/api/admin/tickets/closed', { method: 'GET' }),
     reopenTicket: (ticketId: number) =>
       request<TicketItem>(`/api/admin/tickets/${ticketId}/reopen`, { method: 'PUT' }),
     linkTicket: (incidentId: number, ticketId: number) =>

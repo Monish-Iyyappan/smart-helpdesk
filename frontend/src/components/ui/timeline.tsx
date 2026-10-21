@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { CommentTypeBadge } from '../Badge';
 
 export interface TimelineItem {
   id: string | number;
@@ -14,6 +15,7 @@ export interface TimelineItem {
   time: string;
   content: string;
   isStaff?: boolean;
+  commentType?: string;
 }
 
 export interface TimelineProps {
@@ -45,12 +47,30 @@ export const Timeline: React.FC<TimelineProps> = ({
           .join('')
           .toUpperCase();
 
+        const isIssue = item.commentType === 'ISSUE';
+        const isReassignment = item.commentType === 'REASSIGNMENT';
+        const isClosure = item.commentType === 'CLOSURE';
+
+        const cardBorderBg = isIssue
+          ? 'border-amber-400/80 bg-amber-50/60 dark:border-amber-500/40 dark:bg-amber-950/25'
+          : isReassignment
+          ? 'border-indigo-300/80 bg-indigo-50/60 dark:border-indigo-500/40 dark:bg-indigo-950/25'
+          : isClosure
+          ? 'border-rose-300/80 bg-rose-50/60 dark:border-rose-500/40 dark:bg-rose-950/25'
+          : 'border-border bg-surface';
+
         return (
           <div key={item.id} className="relative flex items-start gap-3">
             {/* Dot / Avatar on Timeline */}
             <div
               className={`absolute -left-4 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ring-4 ring-surface ${
-                item.isStaff
+                isClosure
+                  ? 'bg-rose-600 text-white'
+                  : isIssue
+                  ? 'bg-amber-600 text-white'
+                  : isReassignment
+                  ? 'bg-indigo-600 text-white'
+                  : item.isStaff
                   ? 'bg-primary text-primary-text'
                   : 'bg-secondary text-secondary-text'
               }`}
@@ -59,9 +79,9 @@ export const Timeline: React.FC<TimelineProps> = ({
             </div>
 
             {/* Comment Body */}
-            <div className="ml-4 flex-1 p-3.5 rounded-xl border border-border bg-surface shadow-xs">
+            <div className={`ml-4 flex-1 p-3.5 rounded-xl border shadow-xs transition-colors ${cardBorderBg}`}>
               <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs font-bold text-text">{item.author}</span>
                   {item.role && (
                     <span
@@ -74,6 +94,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                       {item.role}
                     </span>
                   )}
+                  {item.commentType && <CommentTypeBadge type={item.commentType} />}
                 </div>
                 <time className="text-[10px] text-text-dim">{item.time}</time>
               </div>

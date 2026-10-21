@@ -8,6 +8,8 @@ export type TicketStatus = 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'RESOLVED' | 'C
 
 export type IncidentSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+export type CommentType = 'GENERAL' | 'ISSUE' | 'REASSIGNMENT' | 'CLOSURE';
+
 export interface User {
   userId: number;
   name: string;
@@ -27,6 +29,7 @@ export interface CommentDetail {
   userId: number;
   authorName: string;
   commentText: string;
+  commentType?: CommentType;
   createdAt: string;
 }
 
@@ -46,6 +49,7 @@ export interface TicketItem {
   status: TicketStatus;
   createdBy?: number;
   assignedTo?: number | null;
+  assignedAgentId?: number | null;
   incidentId?: number | null;
   createdAt: string;
   updatedAt?: string | null;
@@ -54,10 +58,37 @@ export interface TicketItem {
 export interface TicketDetail extends TicketItem {
   creatorName: string;
   createdByName: string;
+  assignedTo?: number | null;
+  assignedAgentId?: number | null;
   assignedAgentName: string | null;
   incidentTitle: string | null;
   participantCount: number;
   comments: CommentDetail[];
+}
+
+export interface AssignmentRecord {
+  historyId: number;
+  ticketId: number;
+  fromAgentId: number | null;
+  fromAgentName: string | null;
+  toAgentId: number;
+  toAgentName: string;
+  changedById: number;
+  changedByName: string;
+  assignmentType: 'ASSIGN' | 'REASSIGN';
+  reason: string | null;
+  changedAt: string;
+}
+
+export interface ClosedTicketLogItem {
+  ticketNumber: string;
+  title: string;
+  category: string;
+  assignedAgentName: string | null;
+  closedBy: string;
+  closedAt: string;
+  closureNote: string;
+  reassignmentCount: number;
 }
 
 export interface IncidentItem {
