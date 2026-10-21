@@ -7,6 +7,7 @@ import { BlurText } from '../components/ui/blur-text';
 import { AmbientBackground } from '../components/ui/ambient-background';
 import { LoginHeroArt } from '../components/LoginHeroArt';
 import { StatefulButton } from '../components/ui/stateful-button';
+import { IS_DEMO_LOGIN_ENABLED, DEMO_PASSWORD, DEMO_ACCOUNTS } from '../config/demoAuth';
 
 export const LoginPage: React.FC = () => {
   const { login, register, showToast } = useAuth();
@@ -54,8 +55,9 @@ export const LoginPage: React.FC = () => {
   };
 
   const fillCredentials = (roleEmail: string) => {
+    if (!IS_DEMO_LOGIN_ENABLED) return;
     setEmail(roleEmail);
-    setPassword('');
+    setPassword(DEMO_PASSWORD);
     setIsRegister(false);
     setErrorMsg('');
   };
@@ -96,35 +98,26 @@ export const LoginPage: React.FC = () => {
             <LoginHeroArt />
           </div>
 
-          {/* Quick Demo Credentials Pill Bar */}
-          <div className="pt-2 border-t border-border/60">
-            <div className="text-[11px] font-bold text-text-muted mb-2">
-              Quick Test Sign In:
+          {/* Quick Demo Credentials Pill Bar - Only shown in development when VITE_DEMO_LOGIN is enabled */}
+          {IS_DEMO_LOGIN_ENABLED && (
+            <div className="pt-2 border-t border-border/60">
+              <div className="text-[11px] font-bold text-text-muted mb-2">
+                Quick Test Sign In:
+              </div>
+              <div className="flex items-center gap-2 justify-center lg:justify-start flex-wrap">
+                {DEMO_ACCOUNTS.map((acc) => (
+                  <button
+                    key={acc.email}
+                    type="button"
+                    onClick={() => fillCredentials(acc.email)}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-border bg-surface text-text hover:bg-surface-hover hover:border-primary transition-colors focus-ring"
+                  >
+                    {acc.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex items-center gap-2 justify-center lg:justify-start flex-wrap">
-              <button
-                type="button"
-                onClick={() => fillCredentials('student1@college.example')}
-                className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-border bg-surface text-text hover:bg-surface-hover hover:border-primary transition-colors focus-ring"
-              >
-                Student Demo
-              </button>
-              <button
-                type="button"
-                onClick={() => fillCredentials('agent1@college.example')}
-                className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-border bg-surface text-text hover:bg-surface-hover hover:border-primary transition-colors focus-ring"
-              >
-                Agent Demo
-              </button>
-              <button
-                type="button"
-                onClick={() => fillCredentials('admin@college.example')}
-                className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-border bg-surface text-text hover:bg-surface-hover hover:border-primary transition-colors focus-ring"
-              >
-                Admin Demo
-              </button>
-            </div>
-          </div>
+          )}
         </motion.div>
 
         {/* Right Side: Glass Form Card */}
