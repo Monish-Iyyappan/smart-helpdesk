@@ -36,7 +36,7 @@ Built solo by **Monish Iyyappan**.
 
 | Admin dashboard | Incidents |
 |---|---|
-| <img width="1517" height="770" alt="image" src="https://github.com/user-attachments/assets/2263f666-ec99-456b-8de7-16ee007cfd77" /> | ![Uploading image.png…]() |
+| <img width="1517" height="770" alt="image" src="https://github.com/user-attachments/assets/2263f666-ec99-456b-8de7-16ee007cfd77" /> | <img width="1518" height="776" alt="Screenshot 2026-10-28 141824" src="https://github.com/user-attachments/assets/1cad7273-be46-4875-8747-27e8030c0ec3" /> |
 
 | Tickets Details | Ticket History |
 |---|---|
@@ -95,6 +95,8 @@ Check that the order matches your repo. If `schema.sql` already includes the mig
 ```bash
 cd YOUR_BACKEND_FOLDER
 # set the DB username and password as environment variables
+$env:DB_USERNAME = "YOUR_USER"
+$env:DB:PASSWORD = "YOUR_PASSWORD"
 mvn spring-boot:run
 ```
 
