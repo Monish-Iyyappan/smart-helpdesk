@@ -462,6 +462,7 @@ export const AdminPage: React.FC = () => {
           tabs={adminTabs}
           activeTab={activeTab}
           onTabChange={(id) => setActiveTab(id as AdminTab)}
+          tabClassName="px-4 py-2.5 min-h-[44px] text-xs font-bold"
         />
       </div>
 
@@ -567,14 +568,14 @@ export const AdminPage: React.FC = () => {
       {(activeTab === 'ALL_TICKETS' || activeTab === 'UNASSIGNED' || activeTab === 'OVERDUE') && (
         <div className="space-y-4">
           {/* Controls bar */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 bg-surface border border-border rounded-xl shadow-xs">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-4 bg-surface border border-border rounded-2xl shadow-xs">
             <div className="flex items-center gap-2 flex-1">
               <input
                 type="text"
                 value={ticketSearch}
                 onChange={(e) => setTicketSearch(e.target.value)}
                 placeholder="Search ticket #, title, description, category..."
-                className="w-full max-w-sm px-3 py-1.5 text-xs rounded-md border border-border bg-surface text-text placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full max-w-md px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring shadow-xs"
               />
 
               {activeTab === 'ALL_TICKETS' && (
@@ -602,7 +603,7 @@ export const AdminPage: React.FC = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'URGENCY' | 'NEWEST' | 'OLDEST')}
-                className="px-2 py-1 text-xs rounded-md border border-border bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary"
+                className="px-3 py-2 min-h-[44px] text-xs font-semibold rounded-xl border border-border bg-surface text-text focus-ring shadow-xs cursor-pointer"
               >
                 <option value="URGENCY">Urgency Level (Highest First)</option>
                 <option value="NEWEST">Newest First</option>
@@ -1029,7 +1030,7 @@ export const AdminPage: React.FC = () => {
                     value={agentName}
                     onChange={(e) => setAgentName(e.target.value)}
                     placeholder="Bob Agent"
-                    className="w-full px-3 py-2 text-sm rounded-md border border-border bg-surface text-text placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring shadow-xs"
                     required
                   />
                 </div>
@@ -1043,7 +1044,7 @@ export const AdminPage: React.FC = () => {
                     value={agentEmail}
                     onChange={(e) => setAgentEmail(e.target.value)}
                     placeholder="agent@helpdesk.com"
-                    className="w-full px-3 py-2 text-sm rounded-md border border-border bg-surface text-text placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring shadow-xs"
                     required
                   />
                 </div>
@@ -1057,7 +1058,7 @@ export const AdminPage: React.FC = () => {
                     value={agentPassword}
                     onChange={(e) => setAgentPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-3 py-2 text-sm rounded-md border border-border bg-surface text-text placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring shadow-xs"
                     required
                   />
                 </div>
@@ -1066,13 +1067,15 @@ export const AdminPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowAddAgentModal(false)}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-md border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                    className="px-4 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors focus-ring"
                   >
                     Cancel
                   </button>
                   <StatefulButton
                     type="submit"
                     disabled={isAddingAgent}
+                    loading={isAddingAgent}
+                    className="min-h-[44px] px-5 text-xs font-bold rounded-xl shadow-md"
                     loadingText="Creating..."
                     successText="Created!"
                   >
@@ -1111,7 +1114,7 @@ export const AdminPage: React.FC = () => {
                     value={incidentTitle}
                     onChange={(e) => setIncidentTitle(e.target.value)}
                     placeholder="e.g. Campus Wi-Fi Outage"
-                    className="w-full px-3 py-2 text-sm rounded-md border border-border bg-surface text-text placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring shadow-xs"
                     required
                   />
                 </div>
@@ -1125,7 +1128,7 @@ export const AdminPage: React.FC = () => {
                     value={incidentDescription}
                     onChange={(e) => setIncidentDescription(e.target.value)}
                     placeholder="Provide scope, root causes, or affected campus wings..."
-                    className="w-full px-3 py-2 text-sm rounded-md border border-border bg-surface text-text placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring shadow-xs"
                     required
                   />
                 </div>
@@ -1140,7 +1143,7 @@ export const AdminPage: React.FC = () => {
                       value={incidentLocation}
                       onChange={(e) => setIncidentLocation(e.target.value)}
                       placeholder="e.g. Science Block, Building 3"
-                      className="w-full px-3 py-2 text-sm rounded-md border border-border bg-surface text-text placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring shadow-xs"
                       required
                     />
                   </div>
@@ -1152,7 +1155,7 @@ export const AdminPage: React.FC = () => {
                     <select
                       value={incidentSeverity}
                       onChange={(e) => setIncidentSeverity(e.target.value as IncidentSeverity)}
-                      className="w-full px-3 py-2 text-sm rounded-md border border-border bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text focus-ring shadow-xs cursor-pointer"
                     >
                       <option value="LOW">LOW (+5 pts)</option>
                       <option value="MEDIUM">MEDIUM (+10 pts)</option>
@@ -1166,13 +1169,15 @@ export const AdminPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowCreateIncidentModal(false)}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-md border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                    className="px-4 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors focus-ring"
                   >
                     Cancel
                   </button>
                   <StatefulButton
                     type="submit"
                     disabled={isCreatingIncident}
+                    loading={isCreatingIncident}
+                    className="min-h-[44px] px-5 text-xs font-bold rounded-xl shadow-md"
                     loadingText="Recording..."
                     successText="Declared!"
                   >
@@ -1212,7 +1217,7 @@ export const AdminPage: React.FC = () => {
                   <select
                     value={linkIncidentId}
                     onChange={(e) => setLinkIncidentId(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm rounded-md border border-border bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text focus-ring shadow-xs cursor-pointer"
                     required
                   >
                     <option value="" disabled>Select Incident...</option>
@@ -1231,7 +1236,7 @@ export const AdminPage: React.FC = () => {
                   <select
                     value={linkTicketId}
                     onChange={(e) => setLinkTicketId(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm rounded-md border border-border bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text focus-ring shadow-xs cursor-pointer"
                     required
                   >
                     <option value="" disabled>Select Ticket...</option>
@@ -1247,13 +1252,15 @@ export const AdminPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowLinkIncidentModal(false)}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-md border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                    className="px-4 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors focus-ring"
                   >
                     Cancel
                   </button>
                   <StatefulButton
                     type="submit"
                     disabled={isLinking}
+                    loading={isLinking}
+                    className="min-h-[44px] px-5 text-xs font-bold rounded-xl shadow-md"
                     loadingText="Linking..."
                     successText="Linked!"
                   >

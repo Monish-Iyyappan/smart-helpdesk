@@ -16,6 +16,7 @@ export interface StatefulButtonProps
   successText?: string;
   errorText?: string;
   loadingText?: string;
+  loading?: boolean;
 }
 
 export const StatefulButton: React.FC<StatefulButtonProps> = ({
@@ -27,9 +28,11 @@ export const StatefulButton: React.FC<StatefulButtonProps> = ({
   successText = 'Success',
   errorText = 'Error',
   loadingText = 'Processing...',
+  loading,
   ...props
 }) => {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [internalStatus, setInternalStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const status = loading ? 'loading' : internalStatus;
 
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (status === 'loading' || status === 'success') return;
@@ -39,14 +42,14 @@ export const StatefulButton: React.FC<StatefulButtonProps> = ({
     try {
       const result = onClick(e);
       if (result && typeof result.then === 'function') {
-        setStatus('loading');
+        setInternalStatus('loading');
         await result;
-        setStatus('success');
-        setTimeout(() => setStatus('idle'), 1600);
+        setInternalStatus('success');
+        setTimeout(() => setInternalStatus('idle'), 1600);
       }
     } catch {
-      setStatus('error');
-      setTimeout(() => setStatus('idle'), 1800);
+      setInternalStatus('error');
+      setTimeout(() => setInternalStatus('idle'), 1800);
     }
   };
 

@@ -10,6 +10,7 @@ import { BentoStatCard } from '../components/BentoStatCard';
 import { GreetingHeader } from '../components/GreetingHeader';
 import { EmptyState } from '../components/EmptyState';
 import { CardSkeleton } from '../components/ui/skeleton';
+import { SearchIcon } from '../components/Icons';
 
 export const AgentPage: React.FC = () => {
   const { user, showToast } = useAuth();
@@ -19,7 +20,8 @@ export const AgentPage: React.FC = () => {
   // View mode: 'KANBAN' or 'LIST'
   const [viewMode, setViewMode] = useState<'KANBAN' | 'LIST'>('KANBAN');
 
-  // Filters & Sort
+  // Search & Filters & Sort (Jakob's Law & Hick's Law)
+  const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'URGENCY' | 'NEWEST' | 'OLDEST'>('URGENCY');
@@ -87,6 +89,17 @@ export const AgentPage: React.FC = () => {
       result = result.filter((t) => t.overdue && t.status !== 'RESOLVED' && t.status !== 'CLOSED');
     }
 
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(
+        (t) =>
+          t.ticketNumber?.toLowerCase().includes(q) ||
+          t.title?.toLowerCase().includes(q) ||
+          t.description?.toLowerCase().includes(q) ||
+          t.categoryName?.toLowerCase().includes(q)
+      );
+    }
+
     if (sortBy === 'URGENCY') {
       const urgencyRank: Record<string, number> = { URGENT: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
       result.sort((a, b) => {
@@ -101,7 +114,7 @@ export const AgentPage: React.FC = () => {
     }
 
     return result;
-  }, [tickets, statusFilter, overdueOnly, sortBy]);
+  }, [tickets, statusFilter, overdueOnly, searchQuery, sortBy]);
 
   const assignedCount = tickets.filter((t) => t.status === 'ASSIGNED').length;
   const progressCount = tickets.filter((t) => t.status === 'IN_PROGRESS').length;
@@ -110,7 +123,7 @@ export const AgentPage: React.FC = () => {
     (t) => t.overdue && t.status !== 'RESOLVED' && t.status !== 'CLOSED'
   ).length;
 
-  // Grouping for Kanban columns
+  // Grouping for Kanban columns with 44px+ touch targets
   const kanbanColumns = useMemo(() => {
     return [
       {
@@ -122,7 +135,8 @@ export const AgentPage: React.FC = () => {
           <button
             type="button"
             onClick={(e) => handleQuickStatusUpdate(e, ticket.ticketId, 'IN_PROGRESS')}
-            className="px-2.5 py-1 text-xs font-semibold rounded-md bg-primary text-primary-text hover:bg-primary-hover transition-colors shadow-xs"
+            className="px-3.5 py-2 min-h-[38px] text-xs font-bold rounded-xl bg-primary text-primary-text hover:bg-primary-hover transition-all shadow-xs focus-ring active:scale-95"
+            aria-label={`Start work on ticket ${ticket.ticketNumber}`}
           >
             Start Work
           </button>
@@ -131,13 +145,14 @@ export const AgentPage: React.FC = () => {
       {
         id: 'IN_PROGRESS',
         label: 'In Progress',
-        badgeColor: 'bg-warning/10 text-warning border-warning/20',
+        badgeColor: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
         tickets: filteredTickets.filter((t) => t.status === 'IN_PROGRESS'),
         nextAction: (ticket: TicketItem) => (
           <button
             type="button"
             onClick={(e) => handleQuickStatusUpdate(e, ticket.ticketId, 'RESOLVED')}
-            className="px-2.5 py-1 text-xs font-semibold rounded-md bg-success text-white hover:opacity-90 transition-colors shadow-xs"
+            className="px-3.5 py-2 min-h-[38px] text-xs font-bold rounded-xl bg-success text-white hover:opacity-90 transition-all shadow-xs focus-ring active:scale-95"
+            aria-label={`Resolve ticket ${ticket.ticketNumber}`}
           >
             Resolve
           </button>
@@ -153,68 +168,52 @@ export const AgentPage: React.FC = () => {
     ];
   }, [filteredTickets]);
 
+  const statusTabItems = [
+    { id: 'ALL', label: 'All Queue', count: tickets.length },
+    { id: 'ASSIGNED', label: 'Assigned', count: assignedCount },
+    { id: 'IN_PROGRESS', label: 'In Progress', count: progressCount },
+    { id: 'RESOLVED', label: 'Resolved', count: resolvedCount },
+  ];
+
   return (
     <Shell
       title="Agent Workspace"
       headerActions={
-        <div className="flex items-center gap-1 bg-surface-muted p-1 rounded-lg border border-border">
+        /* View mode toggle in navbar (Occam's Razor & Fitts's Law 44px+ touch target) */
+        <div className="flex items-center gap-1 bg-surface-muted p-1 rounded-xl border border-border">
           <button
             type="button"
             onClick={() => setViewMode('KANBAN')}
-            className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+            className={`px-3.5 py-2 min-h-[38px] text-xs font-bold rounded-lg transition-all focus-ring ${
               viewMode === 'KANBAN'
                 ? 'bg-surface text-primary shadow-xs'
                 : 'text-text-muted hover:text-text'
             }`}
+            aria-pressed={viewMode === 'KANBAN'}
           >
             Kanban Board
           </button>
           <button
             type="button"
             onClick={() => setViewMode('LIST')}
-            className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+            className={`px-3.5 py-2 min-h-[38px] text-xs font-bold rounded-lg transition-all focus-ring ${
               viewMode === 'LIST'
                 ? 'bg-surface text-primary shadow-xs'
                 : 'text-text-muted hover:text-text'
             }`}
+            aria-pressed={viewMode === 'LIST'}
           >
             List View
           </button>
         </div>
       }
     >
-      {/* Bento Greeting Header */}
+      {/* 1. Bento Greeting Header with Clean Subtitle & Summary */}
       <GreetingHeader
-        subtitle="Manage assigned queue, advance ticket statuses, and meet SLA resolution goals."
-        actions={
-          <div className="flex items-center gap-1 bg-surface-muted p-1 rounded-xl border border-border">
-            <button
-              type="button"
-              onClick={() => setViewMode('KANBAN')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors focus-ring ${
-                viewMode === 'KANBAN'
-                  ? 'bg-surface text-primary shadow-xs'
-                  : 'text-text-muted hover:text-text'
-              }`}
-            >
-              Kanban Board
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('LIST')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors focus-ring ${
-                viewMode === 'LIST'
-                  ? 'bg-surface text-primary shadow-xs'
-                  : 'text-text-muted hover:text-text'
-              }`}
-            >
-              List View
-            </button>
-          </div>
-        }
+        subtitle="Manage assigned queue, advance ticket workflows, and resolve issues within strict SLA deadlines."
       />
 
-      {/* Overview Cards with Bento Stat Tiles & Sparklines */}
+      {/* 2. Overview Bento Stat Tiles (Miller's Law & 8-point Grid) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 min-w-0">
         <BentoStatCard
           label="Assigned Queue"
@@ -234,87 +233,137 @@ export const AgentPage: React.FC = () => {
           value={resolvedCount}
           sparklineData={[Math.max(0, resolvedCount - 1), resolvedCount, resolvedCount]}
           sparklineColor="var(--color-success)"
-          description="Awaiting student closing"
+          description="Pending student confirmation"
         />
         <BentoStatCard
           label="Overdue SLA"
           value={overdueCount}
           sparklineData={[overdueCount, overdueCount + 1, overdueCount]}
           isAlert={overdueCount > 0}
-          description="Urgent SLA breached"
+          description="Priority SLA breached"
         />
       </div>
 
-      {/* Filter and Sort Bar */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6 p-3 bg-surface border border-border rounded-2xl shadow-xs">
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* 3. Search, Filter and Sort Bar (Common Region & 44px+ touch targets) */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 p-4 bg-surface border border-border rounded-2xl shadow-xs">
+        {/* Search Bar */}
+        <div className="relative flex-1 max-w-md min-w-0">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-dim pointer-events-none">
+            <SearchIcon className="w-4 h-4" />
+          </span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tickets by title, #HD-1001, or category..."
+            className="w-full pl-10 pr-4 py-2.5 min-h-[44px] text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring transition-colors shadow-xs"
+            aria-label="Search assigned tickets"
+          />
+        </div>
+
+        {/* Filter Controls */}
+        <div className="flex items-center gap-3 flex-wrap">
           {viewMode === 'LIST' && (
-            <>
-              <span className="text-xs font-bold text-text-muted">Status:</span>
-              {(['ALL', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED'] as const).map((st) => (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => setStatusFilter(st)}
-                  className={`px-2.5 py-1 text-xs rounded-lg transition-colors focus-ring ${
-                    statusFilter === st
-                      ? 'bg-primary text-primary-text font-bold shadow-xs'
-                      : 'bg-surface-muted text-text-muted hover:text-text'
-                  }`}
-                >
-                  {st}
-                </button>
-              ))}
-            </>
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              {statusTabItems.map((tab) => {
+                const isActive = statusFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setStatusFilter(tab.id)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-xs rounded-xl font-semibold whitespace-nowrap transition-all focus-ring ${
+                      isActive
+                        ? 'bg-primary text-primary-text shadow-sm'
+                        : 'bg-surface-muted text-text-muted hover:text-text hover:bg-surface-hover'
+                    }`}
+                    aria-pressed={isActive}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        isActive ? 'bg-primary-text/20 text-primary-text' : 'bg-surface text-text-dim'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           )}
 
-          <label className="inline-flex items-center gap-1.5 text-xs font-medium text-text-muted cursor-pointer">
+          {/* Overdue Only Filter (Von Restorff Effect) */}
+          <label className="inline-flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-xl border border-border bg-surface-muted/60 text-xs font-semibold text-text cursor-pointer hover:bg-surface-hover transition-colors focus-ring select-none">
             <input
               type="checkbox"
               checked={overdueOnly}
               onChange={(e) => setOverdueOnly(e.target.checked)}
-              className="rounded border-border text-primary focus-ring"
+              className="w-4 h-4 rounded border-border text-primary focus:ring-primary focus:ring-offset-1"
             />
-            <span>Overdue Only</span>
+            <span className={overdueOnly ? 'text-danger font-bold' : 'text-text-muted'}>
+              Overdue Only ({overdueCount})
+            </span>
           </label>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-text-muted">Sort:</span>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'URGENCY' | 'NEWEST' | 'OLDEST')}
-            className="px-2.5 py-1 text-xs rounded-lg border border-border bg-surface text-text focus-ring"
-          >
-            <option value="URGENCY">Urgency Level (Highest First)</option>
-            <option value="NEWEST">Newest First</option>
-            <option value="OLDEST">Oldest First</option>
-          </select>
+          {/* Sort Dropdown */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label htmlFor="agent-sort-select" className="text-xs font-bold text-text-muted">
+              Sort:
+            </label>
+            <select
+              id="agent-sort-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'URGENCY' | 'NEWEST' | 'OLDEST')}
+              className="px-3 py-2 min-h-[44px] text-xs font-semibold rounded-xl border border-border bg-surface text-text focus-ring shadow-xs cursor-pointer"
+            >
+              <option value="URGENCY">Urgency Level (Highest First)</option>
+              <option value="NEWEST">Newest First</option>
+              <option value="OLDEST">Oldest First</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Loading State */}
+      {/* 4. Ticket Views with Skeleton Loading (Doherty Threshold & Common Region) */}
       {isLoading ? (
         <CardSkeleton count={3} />
       ) : filteredTickets.length === 0 ? (
         <EmptyState
           title="No Tickets Found"
           description={
-            overdueOnly
-              ? 'No overdue tickets match your current filters.'
-              : 'You have no assigned tickets matching the current criteria.'
+            searchQuery.trim()
+              ? `No tickets match "${searchQuery}".`
+              : overdueOnly
+              ? 'Great work! No tickets are currently breaching SLA deadlines.'
+              : 'You have no tickets matching the current criteria.'
           }
-          iconType="inbox"
+          iconType={searchQuery ? 'search' : 'inbox'}
+          action={
+            (searchQuery || overdueOnly || statusFilter !== 'ALL') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setOverdueOnly(false);
+                  setStatusFilter('ALL');
+                }}
+                className="px-4 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors shadow-xs focus-ring"
+              >
+                Reset Filters
+              </button>
+            )
+          }
         />
       ) : viewMode === 'KANBAN' ? (
         /* Agent Kanban Board View (Assigned / In Progress / Resolved) */
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           {kanbanColumns.map((col) => (
             <div
               key={col.id}
-              className="bg-surface-muted/60 border border-border rounded-xl p-3 flex flex-col min-h-[480px]"
+              className="bg-surface-muted/60 border border-border rounded-2xl p-4 flex flex-col min-h-[520px] shadow-xs"
             >
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-border">
+              <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-border">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-text uppercase tracking-wider">
                     {col.label}
@@ -325,9 +374,9 @@ export const AgentPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-3 flex-1 overflow-y-auto">
+              <div className="space-y-4 flex-1 overflow-y-auto">
                 {col.tickets.length === 0 ? (
-                  <div className="text-center py-12 border border-dashed border-border rounded-lg p-4">
+                  <div className="text-center py-16 border-2 border-dashed border-border rounded-xl p-4">
                     <p className="text-xs text-text-dim">No tickets in this column</p>
                   </div>
                 ) : (
@@ -348,7 +397,7 @@ export const AgentPage: React.FC = () => {
         </div>
       ) : (
         /* Standard List View with layout animation */
-        <motion.div layout className="grid grid-cols-1 gap-3">
+        <motion.div layout className="grid grid-cols-1 gap-4">
           {filteredTickets.map((ticket) => (
             <TicketCard
               key={ticket.ticketId}
@@ -361,7 +410,8 @@ export const AgentPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={(e) => handleQuickStatusUpdate(e, ticket.ticketId, 'IN_PROGRESS')}
-                    className="px-2.5 py-1 text-xs font-semibold rounded-md bg-primary text-primary-text hover:bg-primary-hover transition-colors shadow-xs"
+                    className="px-3.5 py-2 min-h-[38px] text-xs font-bold rounded-xl bg-primary text-primary-text hover:bg-primary-hover transition-all shadow-xs focus-ring active:scale-95"
+                    aria-label={`Start work on ticket ${ticket.ticketNumber}`}
                   >
                     Start Work
                   </button>
@@ -369,7 +419,8 @@ export const AgentPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={(e) => handleQuickStatusUpdate(e, ticket.ticketId, 'RESOLVED')}
-                    className="px-2.5 py-1 text-xs font-semibold rounded-md bg-success text-white hover:opacity-90 transition-colors shadow-xs"
+                    className="px-3.5 py-2 min-h-[38px] text-xs font-bold rounded-xl bg-success text-white hover:opacity-90 transition-all shadow-xs focus-ring active:scale-95"
+                    aria-label={`Resolve ticket ${ticket.ticketNumber}`}
                   >
                     Resolve
                   </button>

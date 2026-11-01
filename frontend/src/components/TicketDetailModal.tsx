@@ -375,7 +375,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
             <h4 className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1.5">
               Description
             </h4>
-            <p className="text-xs sm:text-sm text-text whitespace-pre-wrap leading-relaxed">
+            <p className="text-xs sm:text-sm text-text whitespace-pre-wrap leading-relaxed max-w-prose">
               {ticket.description}
             </p>
           </div>
@@ -409,7 +409,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   type="button"
                   disabled={isUpdatingStatus}
                   onClick={() => handleUpdateStatus('IN_PROGRESS')}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-xs focus-ring"
+                  className="px-4 py-2 min-h-[44px] text-xs font-bold rounded-xl bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-xs focus-ring"
                 >
                   Start Work (IN_PROGRESS)
                 </button>
@@ -419,7 +419,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   type="button"
                   disabled={isUpdatingStatus}
                   onClick={() => handleUpdateStatus('RESOLVED')}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-success text-white hover:opacity-90 disabled:opacity-50 transition-colors shadow-xs focus-ring"
+                  className="px-4 py-2 min-h-[44px] text-xs font-bold rounded-xl bg-success text-white hover:opacity-90 disabled:opacity-50 transition-colors shadow-xs focus-ring"
                 >
                   Mark as RESOLVED
                 </button>
@@ -451,7 +451,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   <select
                     value={selectedAgentId}
                     onChange={(e) => setSelectedAgentId(e.target.value ? Number(e.target.value) : '')}
-                    className="px-3 py-1.5 text-xs rounded-xl border border-border bg-surface text-text focus-ring"
+                    className="px-3 py-2 min-h-[44px] text-xs font-semibold rounded-xl border border-border bg-surface text-text focus-ring shadow-xs"
                   >
                     <option value="">
                       {hasCurrentAgent ? 'Select New Agent to Reassign...' : 'Select Agent to Assign...'}
@@ -472,7 +472,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                     type="button"
                     disabled={!selectedAgentId || isUpdatingStatus}
                     onClick={handleAssignClick}
-                    className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-xs focus-ring"
+                    className="px-4 py-2 min-h-[44px] text-xs font-bold rounded-xl bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-all shadow-xs focus-ring active:scale-95"
                   >
                     {hasCurrentAgent ? 'Reassign' : 'Assign'}
                   </button>
@@ -489,7 +489,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                       setCloseNote('');
                       setShowCloseModal(true);
                     }}
-                    className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-danger hover:bg-danger-hover text-white transition-colors shadow-xs focus-ring"
+                    className="px-4 py-2 min-h-[44px] text-xs font-bold rounded-xl bg-danger hover:bg-danger-hover text-white transition-all shadow-xs focus-ring active:scale-95"
                   >
                     Close Ticket
                   </button>
@@ -500,7 +500,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                       setReopenReason('');
                       setShowReopenModal(true);
                     }}
-                    className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors shadow-xs focus-ring"
+                    className="px-4 py-2 min-h-[44px] text-xs font-bold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-all shadow-xs focus-ring active:scale-95"
                   >
                     Reopen Ticket
                   </button>
@@ -633,6 +633,8 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   <StatefulButton
                     type="submit"
                     disabled={isSubmittingComment || !commentText.trim()}
+                    loading={isSubmittingComment}
+                    className="min-h-[44px] px-4 text-xs font-bold rounded-xl shadow-xs"
                     loadingText="Posting..."
                     successText="Posted!"
                   >
@@ -715,7 +717,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowReassignModal(false)}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors"
+                  className="px-4 py-2 min-h-[44px] text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors focus-ring"
                 >
                   Cancel
                 </button>
@@ -723,7 +725,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   type="button"
                   disabled={!isReassignValid || isSubmittingReassign}
                   onClick={handleConfirmReassign}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-xs focus-ring"
+                  className="px-4 py-2 min-h-[44px] text-xs font-bold rounded-xl bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-all shadow-xs focus-ring active:scale-95"
                 >
                   {isSubmittingReassign ? 'Reassigning...' : 'Confirm Reassign'}
                 </button>
@@ -787,7 +789,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowCloseModal(false)}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors"
+                  className="px-4 py-2 min-h-[44px] text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors focus-ring"
                 >
                   Cancel
                 </button>
@@ -795,7 +797,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   type="button"
                   disabled={!isCloseValid || isSubmittingClose}
                   onClick={handleConfirmClose}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-danger hover:bg-danger-hover text-white disabled:opacity-50 transition-colors shadow-xs focus-ring"
+                  className="px-4 py-2 min-h-[44px] text-xs font-bold rounded-xl bg-danger hover:bg-danger-hover text-white disabled:opacity-50 transition-all shadow-xs focus-ring active:scale-95"
                 >
                   {isSubmittingClose ? 'Closing...' : 'Close Ticket'}
                 </button>
@@ -860,7 +862,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   type="button"
                   disabled={isSubmittingReopen}
                   onClick={() => setShowReopenModal(false)}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors"
+                  className="px-4 py-2 min-h-[44px] text-xs font-semibold rounded-xl border border-border bg-surface text-text hover:bg-surface-hover transition-colors focus-ring"
                 >
                   Cancel
                 </button>
@@ -868,7 +870,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   type="button"
                   disabled={!isReopenValid || isSubmittingReopen}
                   onClick={handleConfirmReopen}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-xs focus-ring"
+                  className="px-4 py-2 min-h-[44px] text-xs font-bold rounded-xl bg-primary text-primary-text hover:bg-primary-hover disabled:opacity-50 transition-all shadow-xs focus-ring active:scale-95"
                 >
                   {isSubmittingReopen ? 'Reopening...' : 'Confirm Reopen'}
                 </button>
