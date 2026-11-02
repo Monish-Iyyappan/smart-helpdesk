@@ -12,6 +12,7 @@ import { StatefulButton } from '../components/ui/stateful-button';
 import { BentoStatCard } from '../components/BentoStatCard';
 import { GreetingHeader } from '../components/GreetingHeader';
 import { EmptyState } from '../components/EmptyState';
+import { ErrorAlert } from '../components/ErrorAlert';
 import { CardSkeleton } from '../components/ui/skeleton';
 
 export const StudentPage: React.FC = () => {
@@ -37,6 +38,10 @@ export const StudentPage: React.FC = () => {
   const [newPriority, setNewPriority] = useState<Priority>('MEDIUM');
   const [isCreating, setIsCreating] = useState(false);
   const [createFormTouched, setCreateFormTouched] = useState<{ title?: boolean; desc?: boolean }>({});
+  // Form and page error states
+  const [pageError, setPageError] = useState<unknown | null>(null);
+  const [createError, setCreateError] = useState<unknown | null>(null);
+  const [joinError, setJoinError] = useState<unknown | null>(null);
 
   // Join Form State (Postel's Law: forgiving uppercase & whitespace handling)
   const [joinTicketNumber, setJoinTicketNumber] = useState('');
@@ -44,6 +49,7 @@ export const StudentPage: React.FC = () => {
 
   const loadData = async () => {
     setIsLoading(true);
+    setPageError(null);
     try {
       const [tList, cList] = await Promise.all([
         api.tickets.mine(),
@@ -54,8 +60,8 @@ export const StudentPage: React.FC = () => {
       if (cList.length > 0 && newCategoryId === '') {
         setNewCategoryId(cList[0].categoryId);
       }
-    } catch {
-      // handled by global toast
+    } catch (err) {
+      setPageError(err);
     } finally {
       setIsLoading(false);
     }
@@ -88,9 +94,10 @@ export const StudentPage: React.FC = () => {
     }
   };
 
-  const handleCreateTicket = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateTicket = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setCreateFormTouched({ title: true, desc: true });
+    setCreateError(null);
 
     if (!newCategoryId || !newTitle.trim() || !newDescription.trim()) return;
 
@@ -108,28 +115,31 @@ export const StudentPage: React.FC = () => {
       setNewDescription('');
       setNewPriority('MEDIUM');
       setCreateFormTouched({});
+      setCreateError(null);
       loadData();
-    } catch {
-      // handled by global toast
+    } catch (err) {
+      setCreateError(err);
     } finally {
       setIsCreating(false);
     }
   };
 
-  const handleJoinTicket = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleJoinTicket = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const cleanNumber = joinTicketNumber.trim().toUpperCase();
     if (!cleanNumber) return;
 
+    setJoinError(null);
     setIsJoining(true);
     try {
       const joined = await api.tickets.join(cleanNumber);
       showToast(`Joined ticket ${joined.ticketNumber}`, 'success');
       setShowJoinModal(false);
       setJoinTicketNumber('');
+      setJoinError(null);
       loadData();
-    } catch {
-      // handled by global toast
+    } catch (err) {
+      setJoinError(err);
     } finally {
       setIsJoining(false);
     }
@@ -238,6 +248,11 @@ export const StudentPage: React.FC = () => {
           </div>
         }
       />
+
+      {/* Page-level error banner with Try Again button for network/server errors */}
+      {Boolean(pageError) && (
+        <ErrorAlert error={pageError} onRetry={loadData} className="mb-6" />
+      )}
 
       {/* 2. Bento Stat Tiles (Miller's Law: 4 items, 8pt Grid spacing) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 min-w-0">
@@ -424,6 +439,13 @@ export const StudentPage: React.FC = () => {
               </p>
             </div>
 
+            {/* Error message near the form with icon + text + Try again */}
+            <ErrorAlert
+              error={createError}
+              onRetry={() => handleCreateTicket()}
+              className="mb-4"
+            />
+
             <form onSubmit={handleCreateTicket} className="space-y-4" noValidate>
               {/* Category Field */}
               <div>
@@ -569,6 +591,13 @@ export const StudentPage: React.FC = () => {
                 If other students already filed a ticket for the same campus issue, enter its ticket number below to subscribe to incident updates.
               </p>
             </div>
+
+            {/* Error message near the form with icon + text + Try again */}
+            <ErrorAlert
+              error={joinError}
+              onRetry={() => handleJoinTicket()}
+              className="mb-4"
+            />
 
             <form onSubmit={handleJoinTicket} className="space-y-4" noValidate>
               <div>

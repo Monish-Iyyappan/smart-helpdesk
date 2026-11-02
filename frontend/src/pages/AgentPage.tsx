@@ -9,6 +9,8 @@ import { TicketDetailModal } from '../components/TicketDetailModal';
 import { BentoStatCard } from '../components/BentoStatCard';
 import { GreetingHeader } from '../components/GreetingHeader';
 import { EmptyState } from '../components/EmptyState';
+import { ErrorAlert } from '../components/ErrorAlert';
+import { getErrorMessage } from '../api/client';
 import { CardSkeleton } from '../components/ui/skeleton';
 import { SearchIcon } from '../components/Icons';
 
@@ -16,6 +18,7 @@ export const AgentPage: React.FC = () => {
   const { user, showToast } = useAuth();
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [pageError, setPageError] = useState<unknown | null>(null);
 
   // View mode: 'KANBAN' or 'LIST'
   const [viewMode, setViewMode] = useState<'KANBAN' | 'LIST'>('KANBAN');
@@ -31,11 +34,12 @@ export const AgentPage: React.FC = () => {
 
   const loadTickets = async () => {
     setIsLoading(true);
+    setPageError(null);
     try {
       const list = await api.tickets.mine();
       setTickets(list);
-    } catch {
-      // handled by global toast
+    } catch (err) {
+      setPageError(err);
     } finally {
       setIsLoading(false);
     }
@@ -73,8 +77,8 @@ export const AgentPage: React.FC = () => {
       await api.tickets.updateStatus(ticketId, nextStatus);
       showToast(`Status updated to ${nextStatus}`, 'success');
       loadTickets();
-    } catch {
-      // handled by toast
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
     }
   };
 
@@ -212,6 +216,11 @@ export const AgentPage: React.FC = () => {
       <GreetingHeader
         subtitle="Manage assigned queue, advance ticket workflows, and resolve issues within strict SLA deadlines."
       />
+
+      {/* Page-level error banner with Try Again button for network/server errors */}
+      {Boolean(pageError) && (
+        <ErrorAlert error={pageError} onRetry={loadTickets} className="mb-6" />
+      )}
 
       {/* 2. Overview Bento Stat Tiles (Miller's Law & 8-point Grid) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 min-w-0">

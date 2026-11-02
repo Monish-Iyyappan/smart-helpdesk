@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 public class LoginScreen {
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    private static final TerminalSession EXIT_SESSION = new TerminalSession(null, null);
 
     private final Ui ui;
     private final ApiClient apiClient;
@@ -44,10 +45,12 @@ public class LoginScreen {
             switch (choice) {
                 case "1" -> {
                     TerminalSession session = handleSignIn();
+                    if (session == EXIT_SESSION) return null;
                     if (session != null) return session;
                 }
                 case "2" -> {
                     TerminalSession session = handleRegister();
+                    if (session == EXIT_SESSION) return null;
                     if (session != null) return session;
                 }
                 case "3" -> {
@@ -72,7 +75,10 @@ public class LoginScreen {
 
     private TerminalSession handleSignIn() {
         ui.printSubHeader("SIGN IN");
-        String email = ui.readLine("Email Address: ").trim();
+        String email = ui.readLine("Email Address (or 'q' to exit): ").trim();
+        if (email.equalsIgnoreCase("q") || email.equalsIgnoreCase("quit") || email.equalsIgnoreCase("exit")) {
+            return EXIT_SESSION;
+        }
         String password = ui.readPassword("Password: ").trim();
 
         if (email.isBlank() || password.isBlank()) {
@@ -108,7 +114,10 @@ public class LoginScreen {
             return null;
         }
 
-        String email = ui.readLine("Email Address: ").trim();
+        String email = ui.readLine("Email Address (or 'q' to exit): ").trim();
+        if (email.equalsIgnoreCase("q") || email.equalsIgnoreCase("quit") || email.equalsIgnoreCase("exit")) {
+            return EXIT_SESSION;
+        }
         if (email.isBlank()) {
             ui.printError("Email and password are required.");
             return null;

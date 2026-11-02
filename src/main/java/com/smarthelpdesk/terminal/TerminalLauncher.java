@@ -20,12 +20,15 @@ public class TerminalLauncher implements ApplicationRunner {
     private final LoginScreen loginScreen;
     private final StudentScreen studentScreen;
     private final AgentScreen agentScreen;
+    private final AdminScreen adminScreen;
     private final Ui ui;
 
-    public TerminalLauncher(LoginScreen loginScreen, StudentScreen studentScreen, AgentScreen agentScreen, Ui ui) {
+    public TerminalLauncher(LoginScreen loginScreen, StudentScreen studentScreen,
+                            AgentScreen agentScreen, AdminScreen adminScreen, Ui ui) {
         this.loginScreen = loginScreen;
         this.studentScreen = studentScreen;
         this.agentScreen = agentScreen;
+        this.adminScreen = adminScreen;
         this.ui = ui;
     }
 
@@ -53,21 +56,19 @@ public class TerminalLauncher implements ApplicationRunner {
         while (true) {
             TerminalSession session = loginScreen.show();
             if (session == null) {
-                // User exited from login screen
+                // User exited from login screen (typed 'q' at email prompt or menu)
                 break;
             }
 
             if ("STUDENT".equalsIgnoreCase(session.getRole())) {
                 studentScreen.show(session);
-                // When student logs out (Q), return to ask "Run terminal UI? (y/N)"
-                break;
+                // When student logs out (Q), loop back to login screen
             } else if ("AGENT".equalsIgnoreCase(session.getRole())) {
                 agentScreen.show(session);
-                // When agent logs out (Q), return to ask "Run terminal UI? (y/N)"
-                break;
+                // When agent logs out (Q), loop back to login screen
             } else if ("ADMIN".equalsIgnoreCase(session.getRole())) {
-                System.out.println("Admin dashboard coming in the next step");
-                // Returns to login screen loop
+                adminScreen.show(session);
+                // When admin logs out (Q), loop back to login screen
             } else {
                 ui.printError("Unknown role: " + session.getRole());
             }

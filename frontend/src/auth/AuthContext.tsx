@@ -107,20 +107,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(profile);
       return profile;
     } catch (err: unknown) {
-      // Login failed — clean up
+      // Login failed — clean up credentials and state
       clearStoredCredentials();
       setUser(null);
-
-      // Extract a readable message and show it as a toast
-      let msg = 'Login failed. Please check your email and password.';
-      if (err && typeof err === 'object' && 'errorMessage' in err) {
-        const apiErr = err as { errorMessage: string };
-        if (apiErr.errorMessage) msg = apiErr.errorMessage;
-      } else if (err instanceof Error && err.message) {
-        msg = err.message;
-      }
-      showToast(msg, 'error');
-
+      // Re-throw so LoginPage can display the friendly error banner
       throw err;
     } finally {
       setLoginAttemptFlag(false);

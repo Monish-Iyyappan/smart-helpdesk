@@ -7,6 +7,7 @@ import { OverdueBadge, RequestedPriorityBadge, StatusBadge, UrgencyBadge } from 
 import { MessageSquareIcon, XCircleIcon, ClockAlertIcon } from './Icons';
 import { StatefulButton } from './ui/stateful-button';
 import { Timeline } from './ui/timeline';
+import { ErrorAlert } from './ErrorAlert';
 
 interface TicketDetailModalProps {
   ticket: TicketDetail;
@@ -53,6 +54,13 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   const [reopenReason, setReopenReason] = useState('');
   const [isSubmittingReopen, setIsSubmittingReopen] = useState(false);
 
+  // Centralized action error states for detail modal actions
+  const [commentError, setCommentError] = useState<unknown | null>(null);
+  const [statusActionError, setStatusActionError] = useState<unknown | null>(null);
+  const [reassignError, setReassignError] = useState<unknown | null>(null);
+  const [closeError, setCloseError] = useState<unknown | null>(null);
+  const [reopenError, setReopenError] = useState<unknown | null>(null);
+
   // Assignment History Panel State
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<AssignmentRecord[]>([]);
@@ -82,29 +90,32 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
     e.preventDefault();
     if (!commentText.trim()) return;
 
+    setCommentError(null);
     setIsSubmittingComment(true);
     try {
       const typeToSend = userRole === 'STUDENT' && isIssue ? 'ISSUE' : 'GENERAL';
       await api.tickets.addComment(ticket.ticketId, commentText.trim(), typeToSend);
       setCommentText('');
       setIsIssue(false);
+      setCommentError(null);
       showToast(isIssue ? 'Issue note posted successfully' : 'Comment posted successfully', 'success');
       onRefresh();
     } catch (err: any) {
-      showToast(err?.message || 'Failed to post comment', 'error');
+      setCommentError(err);
     } finally {
       setIsSubmittingComment(false);
     }
   };
 
   const handleUpdateStatus = async (newStatus: string) => {
+    setStatusActionError(null);
     setIsUpdatingStatus(true);
     try {
       await api.tickets.updateStatus(ticket.ticketId, newStatus);
       showToast(`Status updated to ${newStatus}`, 'success');
       onRefresh();
     } catch (err: any) {
-      showToast(err?.message || 'Failed to update status', 'error');
+      setStatusActionError(err);
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -114,6 +125,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
     if (!selectedAgentId) return;
     if (hasCurrentAgent) {
       setReassignReason('');
+      setReassignError(null);
       setShowReassignModal(true);
     } else {
       handlePlainAssign();
@@ -122,6 +134,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
   const handlePlainAssign = async () => {
     if (!selectedAgentId || isUpdatingStatus) return;
+    setStatusActionError(null);
     setIsUpdatingStatus(true);
     try {
       await api.admin.assignTicket(ticket.ticketId, Number(selectedAgentId));
@@ -129,7 +142,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
       setSelectedAgentId('');
       onRefresh();
     } catch (err: any) {
-      showToast(err?.message || 'Failed to assign ticket', 'error');
+      setStatusActionError(err);
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -139,6 +152,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
     const trimmed = reassignReason.trim();
     if (!selectedAgentId || trimmed.length < 10 || trimmed.length > 500 || isSubmittingReassign) return;
 
+    setReassignError(null);
     setIsSubmittingReassign(true);
     try {
       await api.admin.assignTicket(ticket.ticketId, Number(selectedAgentId), trimmed);
@@ -146,11 +160,10 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
       setShowReassignModal(false);
       setReassignReason('');
       setSelectedAgentId('');
+      setReassignError(null);
       onRefresh();
     } catch (err: any) {
-      if (!err?.status || ![400, 403, 409].includes(err.status)) {
-        showToast(err?.message || 'Failed to reassign ticket', 'error');
-      }
+      setReassignError(err);
     } finally {
       setIsSubmittingReassign(false);
     }
@@ -160,17 +173,17 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
     const trimmed = closeNote.trim();
     if (trimmed.length < 10 || trimmed.length > 500 || isSubmittingClose) return;
 
+    setCloseError(null);
     setIsSubmittingClose(true);
     try {
       await api.admin.closeTicket(ticket.ticketId, trimmed);
       showToast('Ticket closed successfully', 'success');
       setShowCloseModal(false);
       setCloseNote('');
+      setCloseError(null);
       onRefresh();
     } catch (err: any) {
-      if (!err?.status || ![400, 403, 409].includes(err.status)) {
-        showToast(err?.message || 'Failed to close ticket', 'error');
-      }
+      setCloseError(err);
     } finally {
       setIsSubmittingClose(false);
     }
@@ -180,17 +193,17 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
     const trimmed = reopenReason.trim();
     if (trimmed.length < 10 || trimmed.length > 500 || isSubmittingReopen) return;
 
+    setReopenError(null);
     setIsSubmittingReopen(true);
     try {
       await api.admin.reopenTicket(ticket.ticketId, trimmed);
       showToast('Ticket reopened to IN_PROGRESS', 'success');
       setShowReopenModal(false);
       setReopenReason('');
+      setReopenError(null);
       onRefresh();
     } catch (err: any) {
-      if (!err?.status || ![400, 403, 409].includes(err.status)) {
-        showToast(err?.message || 'Failed to reopen ticket', 'error');
-      }
+      setReopenError(err);
     } finally {
       setIsSubmittingReopen(false);
     }
@@ -400,6 +413,11 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
             </div>
           )}
 
+          {/* Action error banner for status update and agent assignment */}
+          {Boolean(statusActionError) && (
+            <ErrorAlert error={statusActionError} className="mb-3" />
+          )}
+
           {/* Agent: valid next status buttons */}
           {userRole === 'AGENT' && (
             <div className="p-4 rounded-xl border border-border bg-surface-muted/50 flex flex-wrap items-center gap-2">
@@ -604,44 +622,51 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
             {/* Comment Form (Cannot add comments to CLOSED tickets) */}
             {ticket.status !== 'CLOSED' ? (
-              <form onSubmit={handleAddComment} className="space-y-2.5 mt-4">
-                <textarea
-                  rows={2}
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Write a comment or update..."
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring"
-                  required
+              <div className="mt-4">
+                <ErrorAlert
+                  error={commentError}
+                  onRetry={() => handleAddComment({ preventDefault: () => {} } as React.FormEvent)}
+                  className="mb-2.5"
                 />
+                <form onSubmit={handleAddComment} className="space-y-2.5">
+                  <textarea
+                    rows={2}
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Write a comment or update..."
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-border bg-surface text-text placeholder-text-dim focus-ring"
+                    required
+                  />
 
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  {/* Student "Mark as issue" checkbox */}
-                  {userRole === 'STUDENT' ? (
-                    <label className="inline-flex items-center gap-2 text-xs text-text-muted cursor-pointer hover:text-text select-none">
-                      <input
-                        type="checkbox"
-                        checked={isIssue}
-                        onChange={(e) => setIsIssue(e.target.checked)}
-                        className="w-4 h-4 rounded border-border text-primary focus-ring"
-                      />
-                      <span className="font-medium">Mark as issue</span>
-                    </label>
-                  ) : (
-                    <div />
-                  )}
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    {/* Student "Mark as issue" checkbox */}
+                    {userRole === 'STUDENT' ? (
+                      <label className="inline-flex items-center gap-2 text-xs text-text-muted cursor-pointer hover:text-text select-none">
+                        <input
+                          type="checkbox"
+                          checked={isIssue}
+                          onChange={(e) => setIsIssue(e.target.checked)}
+                          className="w-4 h-4 rounded border-border text-primary focus-ring"
+                        />
+                        <span className="font-medium">Mark as issue</span>
+                      </label>
+                    ) : (
+                      <div />
+                    )}
 
-                  <StatefulButton
-                    type="submit"
-                    disabled={isSubmittingComment || !commentText.trim()}
-                    loading={isSubmittingComment}
-                    className="min-h-[44px] px-4 text-xs font-bold rounded-xl shadow-xs"
-                    loadingText="Posting..."
-                    successText="Posted!"
-                  >
-                    Post Comment
-                  </StatefulButton>
-                </div>
-              </form>
+                    <StatefulButton
+                      type="submit"
+                      disabled={isSubmittingComment || !commentText.trim()}
+                      loading={isSubmittingComment}
+                      className="min-h-[44px] px-4 text-xs font-bold rounded-xl shadow-xs"
+                      loadingText="Posting..."
+                      successText="Posted!"
+                    >
+                      Post Comment
+                    </StatefulButton>
+                  </div>
+                </form>
+              </div>
             ) : (
               <p className="text-xs text-text-dim italic mt-2">
                 This ticket is CLOSED. New comments cannot be added.
@@ -683,6 +708,12 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   </strong>
                 </div>
               </div>
+
+              <ErrorAlert
+                error={reassignError}
+                onRetry={handleConfirmReassign}
+                className="mb-4"
+              />
 
               <div className="space-y-1.5 mb-4">
                 <label htmlFor="reassign-reason" className="block text-xs font-semibold text-text">
@@ -758,6 +789,12 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                 Provide a resolution and closure note for ticket <strong className="text-text">{ticket.ticketNumber}</strong>.
               </p>
 
+              <ErrorAlert
+                error={closeError}
+                onRetry={handleConfirmClose}
+                className="mb-4"
+              />
+
               <div className="space-y-1.5 mb-4">
                 <label htmlFor="closure-note" className="block text-xs font-semibold text-text">
                   Closure Note <span className="text-danger">*</span>
@@ -829,6 +866,12 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
               <p className="text-xs text-text-muted mb-4">
                 Explain why ticket <strong className="text-text">{ticket.ticketNumber}</strong> is being reopened to IN_PROGRESS.
               </p>
+
+              <ErrorAlert
+                error={reopenError}
+                onRetry={handleConfirmReopen}
+                className="mb-4"
+              />
 
               <div className="space-y-1.5 mb-4">
                 <label htmlFor="reopen-reason" className="block text-xs font-semibold text-text">

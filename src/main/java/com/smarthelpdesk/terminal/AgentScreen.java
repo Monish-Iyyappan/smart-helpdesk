@@ -22,15 +22,17 @@ import java.util.stream.Collectors;
 public class AgentScreen {
 
     public enum AgentCommand {
-        START_WORK, DONE_RESOLVE, TICKET_DETAILS, OVERDUE_TOGGLE, REFRESH, QUIT, UNKNOWN
+        START_WORK, DONE_RESOLVE, TICKET_DETAILS, COMMENT, OVERDUE_TOGGLE, REFRESH, QUIT, UNKNOWN
     }
 
     private final Ui ui;
     private final ApiClient apiClient;
+    private final CommentFlow commentFlow;
 
     public AgentScreen(Ui ui, ApiClient apiClient) {
         this.ui = ui;
         this.apiClient = apiClient;
+        this.commentFlow = new CommentFlow(apiClient, ui);
     }
 
     public void show(TerminalSession session) {
@@ -49,7 +51,7 @@ public class AgentScreen {
             }
             redrawScreen = false;
 
-            String input = ui.readLine("Enter your choice (S / D / T / O / R / Q): ").trim();
+            String input = ui.readLine("Enter your choice (S / D / T / M / O / R / Q): ").trim();
             AgentCommand cmd = parseCommand(input);
 
             switch (cmd) {
@@ -79,13 +81,23 @@ public class AgentScreen {
                         printControls();
                     }
                 }
+                case COMMENT -> {
+                    boolean updated = handleComment(session.authHeader());
+                    if (updated) {
+                        allTickets = loadTickets(session.authHeader());
+                        redrawScreen = true;
+                    } else {
+                        printControls();
+                    }
+                }
                 case OVERDUE_TOGGLE -> {
                     overdueOnly = !overdueOnly;
                     redrawScreen = true;
                 }
                 case REFRESH -> {
+                    overdueOnly = false;
                     allTickets = loadTickets(session.authHeader());
-                    ui.printSuccess("Queue refreshed.");
+                    ui.printSuccess("Queue refreshed and filters reset.");
                     redrawScreen = true;
                 }
                 case QUIT -> {
@@ -93,7 +105,7 @@ public class AgentScreen {
                     return;
                 }
                 case UNKNOWN -> {
-                    ui.printError("Invalid choice. Type start, done, ticket, overdue, refresh, or quit.");
+                    ui.printError("Invalid choice. Type start, done, ticket, comment, overdue, refresh, or quit.");
                     printControls();
                 }
             }
@@ -110,6 +122,7 @@ public class AgentScreen {
             case "s", "start" -> AgentCommand.START_WORK;
             case "d", "done", "resolve" -> AgentCommand.DONE_RESOLVE;
             case "t", "ticket", "details", "view" -> AgentCommand.TICKET_DETAILS;
+            case "m", "comment" -> AgentCommand.COMMENT;
             case "o", "overdue" -> AgentCommand.OVERDUE_TOGGLE;
             case "r", "refresh" -> AgentCommand.REFRESH;
             case "q", "logout", "quit", "exit" -> AgentCommand.QUIT;
@@ -161,7 +174,7 @@ public class AgentScreen {
 
         // Active Filter Banner
         if (overdueOnly) {
-            System.out.println(Ui.BOLD_RED + "Showing: Overdue Only (" + overdueCount + ")" + Ui.RESET);
+            System.out.println(Ui.BOLD_RED + "Showing: Overdue only (" + overdueCount + ")" + Ui.RESET);
         } else {
             System.out.println(Ui.BOLD + "Showing: All Assigned Tickets (" + allTickets.size() + ")" + Ui.RESET);
         }
@@ -217,7 +230,7 @@ public class AgentScreen {
 
     private void printControls() {
         ui.printDoubleDivider();
-        System.out.println("  [S]tart Work | [D]one (Resolve) | [T]icket Details | [O]verdue Only | [R]efresh | [Q]uit");
+        System.out.println("  [S]tart Work | [D]one (Resolve) | [T]icket Details | [M] Comment | [O]verdue Only | [R]efresh | [Q]uit");
         ui.printDoubleDivider();
     }
 
@@ -355,6 +368,14 @@ public class AgentScreen {
     /**
      * Normalizes input into HD-XXXX format.
      */
+    /**
+     * Comment flow ([M] Comment).
+     * Delegates to shared CommentFlow.
+     */
+    private boolean handleComment(String authHeader) {
+        return commentFlow.run(authHeader, false);
+    }
+
     private String normalizeTicketNumber(String input) {
         String clean = input.trim().toUpperCase();
         if (clean.startsWith("HD-")) {

@@ -14,21 +14,23 @@ import java.util.stream.Collectors;
 
 /**
  * Screen 2: Student Portal.
- * Handles ticket dashboard, status filtering, ticket details, creating, and joining tickets.
+ * Handles ticket dashboard, status filtering, ticket details, creating, joining, and commenting on tickets.
  */
 @Component
 public class StudentScreen {
 
     public enum StudentCommand {
-        CREATE, JOIN, TICKET, FILTER, REFRESH, QUIT, UNKNOWN
+        CREATE, JOIN, TICKET, COMMENT, FILTER, REFRESH, QUIT, UNKNOWN
     }
 
     private final Ui ui;
     private final ApiClient apiClient;
+    private final CommentFlow commentFlow;
 
     public StudentScreen(Ui ui, ApiClient apiClient) {
         this.ui = ui;
         this.apiClient = apiClient;
+        this.commentFlow = new CommentFlow(apiClient, ui);
     }
 
     public void show(TerminalSession session) {
@@ -47,7 +49,7 @@ public class StudentScreen {
             }
             redrawScreen = false;
 
-            String input = ui.readLine("Enter your choice (C / J / T / F / R / Q): ").trim();
+            String input = ui.readLine("Enter your choice (C / J / T / M / F / R / Q): ").trim();
             StudentCommand cmd = parseCommand(input);
 
             switch (cmd) {
@@ -77,6 +79,15 @@ public class StudentScreen {
                         printControls();
                     }
                 }
+                case COMMENT -> {
+                    boolean updated = handleComment(session.authHeader());
+                    if (updated) {
+                        allTickets = loadTickets(session.authHeader());
+                        redrawScreen = true;
+                    } else {
+                        printControls();
+                    }
+                }
                 case FILTER -> {
                     String newFilter = handleFilterSelection(allTickets, currentFilter);
                     if (!newFilter.equals(currentFilter)) {
@@ -94,7 +105,7 @@ public class StudentScreen {
                     return;
                 }
                 case UNKNOWN -> {
-                    ui.printError("Invalid choice. Type create, join, ticket, filter, refresh, or quit.");
+                    ui.printError("Invalid choice. Type create, join, ticket, comment, filter, refresh, or quit.");
                     printControls();
                 }
             }
@@ -111,6 +122,7 @@ public class StudentScreen {
             case "c", "create", "new" -> StudentCommand.CREATE;
             case "j", "join" -> StudentCommand.JOIN;
             case "t", "ticket", "details", "view" -> StudentCommand.TICKET;
+            case "m", "comment" -> StudentCommand.COMMENT;
             case "f", "filter" -> StudentCommand.FILTER;
             case "r", "refresh" -> StudentCommand.REFRESH;
             case "q", "logout", "quit", "exit" -> StudentCommand.QUIT;
@@ -173,7 +185,7 @@ public class StudentScreen {
                 .filter(t -> "ALL".equals(filter) || filter.equalsIgnoreCase(t.status()))
                 .collect(Collectors.toList());
 
-        // Active filter headline per Part A
+        // Active filter headline
         String filterLabel = getFilterLabel(filter);
         System.out.println(Ui.BOLD + "Showing: " + filterLabel + " (" + filtered.size() + ")" + Ui.RESET);
         ui.printDivider();
@@ -198,7 +210,7 @@ public class StudentScreen {
 
     private void printControls() {
         ui.printDoubleDivider();
-        System.out.println("  [C]reate | [J]oin | [T]icket details | [F]ilter | [R]efresh | [Q]uit");
+        System.out.println("  [C]reate | [J]oin | [T]icket details | [M] Comment | [F]ilter | [R]efresh | [Q]uit");
         System.out.println(Ui.DIM + "  Filter = show only tickets with one status." + Ui.RESET);
         ui.printDoubleDivider();
     }
@@ -227,7 +239,7 @@ public class StudentScreen {
     }
 
     /**
-     * Part A: Status filter picker. Accepts 1-6 or status names.
+     * Status filter picker. Accepts 1-6 or status names.
      */
     private String handleFilterSelection(List<TicketListResponse> allTickets, String currentFilter) {
         int total = allTickets.size();
@@ -267,8 +279,7 @@ public class StudentScreen {
     }
 
     /**
-     * Part B: Create Ticket.
-     * Collects Category, Title, Description, and Priority one by one.
+     * Create Ticket flow.
      */
     private boolean handleCreateTicket(String authHeader) {
         List<CategoryResponse> categories;
@@ -408,10 +419,10 @@ public class StudentScreen {
     }
 
     /**
-     * Part C: Join Ticket.
+     * Join Ticket flow.
      */
     private boolean handleJoinTicket(String authHeader) {
-        String input = ui.readLine("Enter ticket number to join (e.g. HD-1042): ").trim();
+        String input = ui.readLine("Enter ticket number to join (e.g. HD-1042, b to cancel): ").trim();
         if (input.equalsIgnoreCase("b") || input.isEmpty()) {
             return false;
         }
@@ -445,7 +456,7 @@ public class StudentScreen {
      * View Ticket Details modal. Returns true if successfully viewed, false on cancel/error.
      */
     private boolean handleViewTicket(String authHeader) {
-        String input = ui.readLine("Enter ticket number (e.g. HD-1042): ").trim();
+        String input = ui.readLine("Enter ticket number (e.g. HD-1042, b to cancel): ").trim();
         if (input.equalsIgnoreCase("b") || input.isEmpty()) {
             return false;
         }
@@ -477,6 +488,14 @@ public class StudentScreen {
     }
 
     /**
+     * Comment flow ([M] Comment).
+     * Delegates to shared CommentFlow.
+     */
+    private boolean handleComment(String authHeader) {
+        return commentFlow.run(authHeader, true);
+    }
+
+    /**
      * Normalizes input into HD-XXXX format.
      */
     private String normalizeTicketNumber(String input) {
@@ -492,7 +511,6 @@ public class StudentScreen {
 
     /**
      * Renders ticket details in distinct boxed sections for student view.
-     * Note: Urgency analysis breakdown and assignment history are omitted for students.
      */
     private void renderTicketDetailView(TicketDetailResponse ticket) {
         System.out.println();

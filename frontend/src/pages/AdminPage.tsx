@@ -23,6 +23,8 @@ import { GreetingHeader } from '../components/GreetingHeader';
 import { EmptyState } from '../components/EmptyState';
 import { CardSkeleton } from '../components/ui/skeleton';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { ErrorAlert } from '../components/ErrorAlert';
+import { getErrorMessage } from '../api/client';
 
 type AdminTab = 'STATS' | 'ALL_TICKETS' | 'UNASSIGNED' | 'OVERDUE' | 'INCIDENTS' | 'AGENTS' | 'CLOSED_LOG';
 
@@ -30,6 +32,11 @@ export const AdminPage: React.FC = () => {
   const { user, showToast } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>('STATS');
   const [isLoading, setIsLoading] = useState(true);
+  // Centralized error states for page and admin action modals
+  const [pageError, setPageError] = useState<unknown | null>(null);
+  const [addAgentError, setAddAgentError] = useState<unknown | null>(null);
+  const [createIncidentError, setCreateIncidentError] = useState<unknown | null>(null);
+  const [linkError, setLinkError] = useState<unknown | null>(null);
 
   // Data states
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -76,7 +83,7 @@ export const AdminPage: React.FC = () => {
   const [selectedIncident, setSelectedIncident] = useState<IncidentItem | null>(null);
   const [incidentTickets, setIncidentTickets] = useState<TicketItem[]>([]);
   const [isLoadingIncidentTickets, setIsLoadingIncidentTickets] = useState(false);
-  const [incidentTicketsError, setIncidentTicketsError] = useState<string | null>(null);
+  const [incidentTicketsError, setIncidentTicketsError] = useState<unknown | null>(null);
 
   const loadIncidentTickets = async (incidentId: number) => {
     setIsLoadingIncidentTickets(true);
@@ -130,7 +137,7 @@ export const AdminPage: React.FC = () => {
         setIncidentTickets(mappedFallback);
       } else {
         setIncidentTickets([]);
-        setIncidentTicketsError(err?.message || 'Failed to load tickets for this incident');
+        setIncidentTicketsError(err);
       }
     } finally {
       setIsLoadingIncidentTickets(false);
@@ -150,6 +157,7 @@ export const AdminPage: React.FC = () => {
 
   const loadAllData = async () => {
     setIsLoading(true);
+    setPageError(null);
     try {
       const [sData, aTickets, uTickets, oTickets, incList, agList, cLog] = await Promise.all([
         api.admin.stats().catch(() => null),
@@ -197,8 +205,8 @@ export const AdminPage: React.FC = () => {
           setSelectedIncident(updated);
         }
       }
-    } catch {
-      // Handled by global toast
+    } catch (err) {
+      setPageError(err);
     } finally {
       setIsLoading(false);
     }
@@ -234,10 +242,11 @@ export const AdminPage: React.FC = () => {
   };
 
   // Add Agent Submission
-  const handleAddAgent = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddAgent = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!agentName.trim() || !agentEmail.trim() || !agentPassword) return;
 
+    setAddAgentError(null);
     setIsAddingAgent(true);
     try {
       await api.admin.createAgent({
@@ -250,19 +259,21 @@ export const AdminPage: React.FC = () => {
       setAgentName('');
       setAgentEmail('');
       setAgentPassword('');
+      setAddAgentError(null);
       loadAllData();
-    } catch {
-      // Handled by global toast
+    } catch (err) {
+      setAddAgentError(err);
     } finally {
       setIsAddingAgent(false);
     }
   };
 
   // Create Incident Submission
-  const handleCreateIncident = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateIncident = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!incidentTitle.trim() || !incidentDescription.trim() || !incidentLocation.trim()) return;
 
+    setCreateIncidentError(null);
     setIsCreatingIncident(true);
     try {
       await api.incidents.create({
@@ -277,19 +288,21 @@ export const AdminPage: React.FC = () => {
       setIncidentDescription('');
       setIncidentLocation('');
       setIncidentSeverity('MEDIUM');
+      setCreateIncidentError(null);
       loadAllData();
-    } catch {
-      // Handled by global toast
+    } catch (err) {
+      setCreateIncidentError(err);
     } finally {
       setIsCreatingIncident(false);
     }
   };
 
   // Link Ticket Submission
-  const handleLinkTicket = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLinkTicket = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!linkIncidentId || !linkTicketId) return;
 
+    setLinkError(null);
     setIsLinking(true);
     const targetIncId = Number(linkIncidentId);
     try {
@@ -298,12 +311,13 @@ export const AdminPage: React.FC = () => {
       setShowLinkIncidentModal(false);
       setLinkIncidentId('');
       setLinkTicketId('');
+      setLinkError(null);
       loadAllData();
       if (selectedIncident && selectedIncident.incidentId === targetIncId) {
         loadIncidentTickets(targetIncId);
       }
-    } catch {
-      // Handled by global toast
+    } catch (err) {
+      setLinkError(err);
     } finally {
       setIsLinking(false);
     }
@@ -313,10 +327,10 @@ export const AdminPage: React.FC = () => {
   const handleDirectAssign = async (ticketId: number, agentId: number) => {
     try {
       await api.admin.assignTicket(ticketId, agentId);
-      showToast('Ticket assigned successfully', 'success');
+      showToast('Agent assigned successfully', 'success');
       loadAllData();
-    } catch {
-      // Handled
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
     }
   };
 
@@ -455,6 +469,11 @@ export const AdminPage: React.FC = () => {
           </div>
         }
       />
+
+      {/* Page-level error banner with Try Again button for network/server errors */}
+      {Boolean(pageError) && (
+        <ErrorAlert error={pageError} onRetry={loadAllData} className="mb-6" />
+      )}
 
       {/* Aceternity Animated Tabs */}
       <div className="mb-6">
@@ -813,9 +832,11 @@ export const AdminPage: React.FC = () => {
                         </h5>
 
                         {incidentTicketsError ? (
-                          <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger text-xs font-semibold">
-                            {incidentTicketsError}
-                          </div>
+                          <ErrorAlert
+                            error={incidentTicketsError}
+                            onRetry={() => selectedIncident && loadIncidentTickets(selectedIncident.incidentId)}
+                            className="my-3"
+                          />
                         ) : isLoadingIncidentTickets ? (
                           <CardSkeleton count={2} />
                         ) : !incidentTickets || incidentTickets.length === 0 ? (
@@ -1020,6 +1041,11 @@ export const AdminPage: React.FC = () => {
               className="bg-surface border border-border rounded-xl max-w-sm w-full p-6 shadow-xl"
             >
               <h3 className="text-base font-bold text-text mb-4">Add New Support Agent</h3>
+              <ErrorAlert
+                error={addAgentError}
+                onRetry={() => handleAddAgent()}
+                className="mb-4"
+              />
               <form onSubmit={handleAddAgent} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-text mb-1">
@@ -1104,6 +1130,11 @@ export const AdminPage: React.FC = () => {
               className="bg-surface border border-border rounded-xl max-w-lg w-full p-6 shadow-xl"
             >
               <h3 className="text-base font-bold text-text mb-4">Declare Campus Incident</h3>
+              <ErrorAlert
+                error={createIncidentError}
+                onRetry={() => handleCreateIncident()}
+                className="mb-4"
+              />
               <form onSubmit={handleCreateIncident} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-text mb-1">
@@ -1209,6 +1240,11 @@ export const AdminPage: React.FC = () => {
               <p className="text-xs text-text-muted mb-4">
                 Linking a ticket recalculates ticket urgency with the incident's severity and combined affected students.
               </p>
+              <ErrorAlert
+                error={linkError}
+                onRetry={() => handleLinkTicket()}
+                className="mb-4"
+              />
               <form onSubmit={handleLinkTicket} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-text mb-1">

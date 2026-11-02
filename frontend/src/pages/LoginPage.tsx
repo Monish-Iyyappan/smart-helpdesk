@@ -8,6 +8,7 @@ import { AmbientBackground } from '../components/ui/ambient-background';
 import { LoginHeroArt } from '../components/LoginHeroArt';
 import { StatefulButton } from '../components/ui/stateful-button';
 import { AnimatedTabs } from '../components/ui/animated-tabs';
+import { ErrorAlert } from '../components/ErrorAlert';
 import {
   MailIcon,
   LockIcon,
@@ -15,7 +16,6 @@ import {
   EyeIcon,
   EyeOffIcon,
   CheckCircleIcon,
-  AlertTriangleIcon,
   SparklesIcon,
 } from '../components/Icons';
 import { IS_DEMO_LOGIN_ENABLED, DEMO_PASSWORD, DEMO_ACCOUNTS } from '../config/demoAuth';
@@ -28,7 +28,7 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [authError, setAuthError] = useState<unknown | null>(null);
 
   // Inline validation touched states (Postel's Law & Zeigarnik Effect)
   const [touched, setTouched] = useState<{ name?: boolean; email?: boolean; password?: boolean }>({});
@@ -46,26 +46,26 @@ export const LoginPage: React.FC = () => {
     ? 'Please enter your full name.'
     : '';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setAuthError(null);
 
     // Mark fields as touched
     setTouched({ name: true, email: true, password: true });
 
     const trimmedEmail = email.trim();
     if (!isValidEmail(trimmedEmail)) {
-      setErrorMsg('Please enter a valid email address.');
+      setAuthError('Please enter a valid email address.');
       return;
     }
 
     if (isRegister) {
       if (!name.trim()) {
-        setErrorMsg('Please enter your full name.');
+        setAuthError('Please enter your full name.');
         return;
       }
       if (!isValidPassword(password)) {
-        setErrorMsg('Password must be at least 6 characters long.');
+        setAuthError('Password must be at least 6 characters long.');
         return;
       }
     }
@@ -79,12 +79,9 @@ export const LoginPage: React.FC = () => {
       } else {
         await login(trimmedEmail, password);
       }
-    } catch {
-      setErrorMsg(
-        isRegister
-          ? 'Registration failed. Email may already be in use.'
-          : 'Login failed. Please check your email and password.'
-      );
+    } catch (err) {
+      // Store error object directly; ErrorAlert and getErrorMessage will map it cleanly
+      setAuthError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -92,7 +89,7 @@ export const LoginPage: React.FC = () => {
 
   const handleTabSwitch = (toRegister: boolean) => {
     setIsRegister(toRegister);
-    setErrorMsg('');
+    setAuthError(null);
     setName('');
     setEmail('');
     setPassword('');
@@ -105,7 +102,7 @@ export const LoginPage: React.FC = () => {
     setEmail(roleEmail);
     setPassword(DEMO_PASSWORD);
     setIsRegister(false);
-    setErrorMsg('');
+    setAuthError(null);
     setTouched({ email: true, password: true });
   };
 
@@ -208,20 +205,20 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          {/* Inline Error Banner (Doherty Threshold & Peak-End Rule) */}
+          {/* Inline Error Banner using standardized ErrorAlert component */}
           <AnimatePresence>
-            {errorMsg && (
+            {Boolean(authError) && (
               <motion.div
                 initial={{ opacity: 0, height: 0, y: -6 }}
                 animate={{ opacity: 1, height: 'auto', y: 0 }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}
-                role="alert"
-                aria-live="polite"
-                className="mb-4 px-3.5 py-2.5 rounded-xl bg-danger-bg border border-danger-border text-danger-text text-xs font-medium flex items-start gap-2.5 shadow-xs"
+                className="mb-4"
               >
-                <AlertTriangleIcon className="w-4 h-4 text-danger shrink-0 mt-0.5" />
-                <span className="leading-relaxed flex-1">{errorMsg}</span>
+                <ErrorAlert
+                  error={authError}
+                  onRetry={() => handleSubmit()}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -248,7 +245,7 @@ export const LoginPage: React.FC = () => {
                     value={name}
                     onChange={(e) => {
                       setName(e.target.value);
-                      if (errorMsg) setErrorMsg('');
+                      if (authError) setAuthError(null);
                     }}
                     onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
                     placeholder="Jane Doe"
@@ -290,7 +287,7 @@ export const LoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    if (errorMsg) setErrorMsg('');
+                    if (authError) setAuthError(null);
                   }}
                   onBlur={() => {
                     setTouched((prev) => ({ ...prev, email: true }));
@@ -336,7 +333,7 @@ export const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    if (errorMsg) setErrorMsg('');
+                    if (authError) setAuthError(null);
                   }}
                   onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
                   placeholder="••••••••"
