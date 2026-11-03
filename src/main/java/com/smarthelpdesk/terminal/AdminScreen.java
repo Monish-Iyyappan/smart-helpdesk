@@ -23,7 +23,7 @@ import java.util.NoSuchElementException;
  * incident management & ticket linking, agent provisioning, and audit logs.
  */
 @Component
-public class AdminScreen {
+public class AdminScreen extends BaseScreen {
 
     public enum AdminTab {
         STATS(1, "Stats"),
@@ -54,6 +54,7 @@ public class AdminScreen {
     private final CommentFlow commentFlow;
 
     public AdminScreen(Ui ui, ApiClient apiClient) {
+        super("Enter your choice (1-7 / T / M / I / C / O / N / A / L / R / Q): ");
         this.ui = ui;
         this.apiClient = apiClient;
         this.commentFlow = new CommentFlow(apiClient, ui);
@@ -75,7 +76,8 @@ public class AdminScreen {
             }
             redrawScreen = false;
 
-            String input = ui.readLine("Enter your choice (1-7 / T / M / I / C / O / N / A / L / R / Q): ").trim();
+            showControlsAndPrompt();
+            String input = ui.readLine("").trim();
             AdminCommand cmd = parseCommand(input);
 
             switch (cmd) {
@@ -112,8 +114,6 @@ public class AdminScreen {
                     if (success) {
                         data = loadAllData(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case COMMENT -> {
@@ -121,21 +121,16 @@ public class AdminScreen {
                     if (updated) {
                         data = loadAllData(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case INCIDENT_TICKETS -> {
                     handleIncidentTickets(session.authHeader());
-                    printControls();
                 }
                 case CLOSE_TICKET -> {
                     boolean success = handleCloseTicket(session.authHeader());
                     if (success) {
                         data = loadAllData(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case REOPEN_TICKET -> {
@@ -143,8 +138,6 @@ public class AdminScreen {
                     if (success) {
                         data = loadAllData(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case DECLARE_INCIDENT -> {
@@ -153,8 +146,6 @@ public class AdminScreen {
                         currentTab = AdminTab.INCIDENTS;
                         data = loadAllData(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case ADD_AGENT -> {
@@ -163,8 +154,6 @@ public class AdminScreen {
                         currentTab = AdminTab.AGENTS;
                         data = loadAllData(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case LINK_TICKET -> {
@@ -172,8 +161,6 @@ public class AdminScreen {
                     if (linked) {
                         data = loadAllData(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case REFRESH -> {
@@ -187,7 +174,6 @@ public class AdminScreen {
                 }
                 case UNKNOWN -> {
                     ui.printError("Invalid choice. Enter 1-7 for tabs, or T, M, I, C, O, N, A, L, R, Q.");
-                    printControls();
                 }
             }
         }
@@ -298,8 +284,6 @@ public class AdminScreen {
             case AGENTS -> renderAgentsTab(data.agents, data.allTickets);
             case CLOSED_LOG -> renderClosedLogTab(data.closedLog);
         }
-
-        printControls();
     }
 
     private void renderTabBar(AdminTab active, AdminDataHolder d) {
@@ -1364,7 +1348,8 @@ public class AdminScreen {
         };
     }
 
-    private void printControls() {
+    @Override
+    protected void printControls() {
         ui.printDoubleDivider();
         System.out.println("  [1-7] Tabs | [T] Ticket Details | [M] Comment | [I] Incident Tickets");
         System.out.println("  [C] Close Ticket | [O] Reopen Ticket | [N] Declare Incident");

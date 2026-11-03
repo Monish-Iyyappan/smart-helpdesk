@@ -23,6 +23,7 @@ Built solo by **Monish Iyyappan**.
 - **Shared incidents:** many tickets link to one incident, with ticket counts per incident
 - **Join a ticket:** students join an existing ticket instead of filing a duplicate
 - **Audit trail:** assignment history, typed comments and a closed-ticket log
+- **Interactive Terminal UI:** built-in CLI client with ANSI colors demonstrating pure Java OOP abstraction (`BaseScreen`)
 
 ## Ticket lifecycle
 `OPEN` → `ASSIGNED` → `IN_PROGRESS` → `RESOLVED` → `CLOSED`
@@ -54,10 +55,11 @@ Built solo by **Monish Iyyappan**.
 ## Architecture
 ```text
 React app  →  REST API (controller → service → dao)  →  MySQL
+Terminal   →  REST API (controller → service → dao)  →  MySQL
 ```
-Backend packages: `controller`, `service`, `dao`, `model`, `assignment`, `priority`, `config`, `exception`.
+Backend packages: `controller`, `service`, `dao`, `model`, `assignment`, `priority`, `config`, `exception`, `terminal`.
 
-## Database
+## Database (7 Tables)
 ```mermaid
 erDiagram
     USERS ||--o{ TICKETS : creates
@@ -73,44 +75,77 @@ erDiagram
 ```
 
 ## How to run locally
-**Prerequisites:** Java 17, Maven, Node.js (YOUR_NODE_VERSION) and MySQL 8.
 
-**1. Clone**
+### Prerequisites
+- **Java 17** (LTS)
+- **Maven 3.8+**
+- **Node.js 18+** & npm
+- **MySQL 8** (running locally on port 3306)
+
+---
+
+### Step 1: Clone the repository
 ```bash
 git clone https://github.com/Monish-Iyyappan/smarthelpdesk.git
 cd smarthelpdesk
 ```
 
-**2. Create the database**
-```bash
-mysql -u root -p -e "CREATE DATABASE smart_helpdesk"
-mysql -u root -p smart_helpdesk < database/schema.sql
-mysql -u root -p smart_helpdesk < database/migration_assignment.sql
-mysql -u root -p smart_helpdesk < database/migration_reopen.sql
-mysql -u root -p smart_helpdesk < database/seed_data.sql
-```
-Check that the order matches your repo. If `schema.sql` already includes the migrations, skip those two lines.
+---
 
-**3. Run the backend** (http://localhost:8080)
-```bash
-cd YOUR_BACKEND_FOLDER
-# set the DB username and password as environment variables
-$env:DB_USERNAME = "YOUR_USER"
-$env:DB:PASSWORD = "YOUR_PASSWORD"
+### Step 2: Initialize the MySQL database
+Run the unified schema and seed script:
+```powershell
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS smart_helpdesk;"
+mysql -u root -p smart_helpdesk < database/seed_schema.sql
+```
+*(This sets up all 7 tables and default seed data idempotently).*
+
+---
+
+### Step 3: Run the Backend (Spring Boot on http://localhost:8080)
+Open a terminal in the project root directory and set your environment variables:
+
+```powershell
+# Set database environment variables for this terminal session:
+$env:DB_URL = "jdbc:mysql://localhost:3306/smart_helpdesk"
+$env:DB_USERNAME = "root"
+$env:DB_PASSWORD = "YOUR_MYSQL_PASSWORD"
+
+# Launch Spring Boot:
 mvn spring-boot:run
 ```
+Upon startup, the server boots and asks:
+```text
+Run terminal UI? (y/N)
+```
+- Type `y` to explore the interactive ANSI terminal interface.
+- Type `n` to let the backend run as a pure REST API for the React frontend.
 
-**4. Run the frontend** (http://localhost:3000)
+---
+
+### Step 4: Run the Frontend (React on http://localhost:3000)
+Open a second terminal window:
+
 ```bash
-cd YOUR_FRONTEND_FOLDER
+cd frontend
 npm install
 npm run dev
 ```
+Open your browser at `http://localhost:3000`.
 
-**5. Run the tests**
-```bash
+---
+
+### Step 5: Run Automated Tests
+```powershell
+# Run the complete test suite:
 mvn test
+
+# Run individual unit tests:
+mvn test -Dtest=UrgencyCalculatorTest
+mvn test -Dtest=AssignmentPolicyTest
 ```
+
+---
 
 ## Demo accounts
 | Role | Email | Password |

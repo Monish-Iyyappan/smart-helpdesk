@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  * Handles ticket dashboard, status filtering, ticket details, creating, joining, and commenting on tickets.
  */
 @Component
-public class StudentScreen {
+public class StudentScreen extends BaseScreen {
 
     public enum StudentCommand {
         CREATE, JOIN, TICKET, COMMENT, FILTER, REFRESH, QUIT, UNKNOWN
@@ -28,6 +28,7 @@ public class StudentScreen {
     private final CommentFlow commentFlow;
 
     public StudentScreen(Ui ui, ApiClient apiClient) {
+        super("Enter your choice (C / J / T / M / F / R / Q): ");
         this.ui = ui;
         this.apiClient = apiClient;
         this.commentFlow = new CommentFlow(apiClient, ui);
@@ -49,7 +50,8 @@ public class StudentScreen {
             }
             redrawScreen = false;
 
-            String input = ui.readLine("Enter your choice (C / J / T / M / F / R / Q): ").trim();
+            showControlsAndPrompt();
+            String input = ui.readLine("").trim();
             StudentCommand cmd = parseCommand(input);
 
             switch (cmd) {
@@ -58,8 +60,6 @@ public class StudentScreen {
                     if (created) {
                         allTickets = loadTickets(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case JOIN -> {
@@ -67,16 +67,12 @@ public class StudentScreen {
                     if (joined) {
                         allTickets = loadTickets(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case TICKET -> {
                     boolean success = handleViewTicket(session.authHeader());
                     if (success) {
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case COMMENT -> {
@@ -84,8 +80,6 @@ public class StudentScreen {
                     if (updated) {
                         allTickets = loadTickets(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case FILTER -> {
@@ -204,11 +198,10 @@ public class StudentScreen {
                 renderTicketRow(t);
             }
         }
-
-        printControls();
     }
 
-    private void printControls() {
+    @Override
+    protected void printControls() {
         ui.printDoubleDivider();
         System.out.println("  [C]reate | [J]oin | [T]icket details | [M] Comment | [F]ilter | [R]efresh | [Q]uit");
         System.out.println(Ui.DIM + "  Filter = show only tickets with one status." + Ui.RESET);

@@ -5,10 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * DTO for full ticket details including creator name, assigned agent (id and name) or null,
- * incident title or null, participant count, and comments with author names.
- */
+// Full ticket detail response payload sent to the frontend or terminal
 public record TicketDetailResponse(
         Integer ticketId,
         String ticketNumber,

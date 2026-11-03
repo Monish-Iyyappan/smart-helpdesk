@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * urgency factors, status advancement (Start Work, Resolve), and ticket detail modal.
  */
 @Component
-public class AgentScreen {
+public class AgentScreen extends BaseScreen {
 
     public enum AgentCommand {
         START_WORK, DONE_RESOLVE, TICKET_DETAILS, COMMENT, OVERDUE_TOGGLE, REFRESH, QUIT, UNKNOWN
@@ -30,6 +30,7 @@ public class AgentScreen {
     private final CommentFlow commentFlow;
 
     public AgentScreen(Ui ui, ApiClient apiClient) {
+        super("Enter your choice (S / D / T / M / O / R / Q): ");
         this.ui = ui;
         this.apiClient = apiClient;
         this.commentFlow = new CommentFlow(apiClient, ui);
@@ -51,7 +52,8 @@ public class AgentScreen {
             }
             redrawScreen = false;
 
-            String input = ui.readLine("Enter your choice (S / D / T / M / O / R / Q): ").trim();
+            showControlsAndPrompt();
+            String input = ui.readLine("").trim();
             AgentCommand cmd = parseCommand(input);
 
             switch (cmd) {
@@ -60,8 +62,6 @@ public class AgentScreen {
                     if (success) {
                         allTickets = loadTickets(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case DONE_RESOLVE -> {
@@ -69,16 +69,12 @@ public class AgentScreen {
                     if (success) {
                         allTickets = loadTickets(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case TICKET_DETAILS -> {
                     boolean success = handleViewTicket(session.authHeader());
                     if (success) {
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case COMMENT -> {
@@ -86,8 +82,6 @@ public class AgentScreen {
                     if (updated) {
                         allTickets = loadTickets(session.authHeader());
                         redrawScreen = true;
-                    } else {
-                        printControls();
                     }
                 }
                 case OVERDUE_TOGGLE -> {
@@ -188,8 +182,6 @@ public class AgentScreen {
         renderStageSection("ASSIGNED", visibleTickets);
         renderStageSection("IN_PROGRESS", visibleTickets);
         renderStageSection("RESOLVED", visibleTickets);
-
-        printControls();
     }
 
     private void renderStageSection(String stage, List<TicketListResponse> list) {
@@ -228,7 +220,8 @@ public class AgentScreen {
         System.out.printf("    Requested: %s%n", priority);
     }
 
-    private void printControls() {
+    @Override
+    protected void printControls() {
         ui.printDoubleDivider();
         System.out.println("  [S]tart Work | [D]one (Resolve) | [T]icket Details | [M] Comment | [O]verdue Only | [R]efresh | [Q]uit");
         ui.printDoubleDivider();

@@ -4,5 +4,3 @@ node_modules
 .git
 .env*
 scripts
-*.pptx
-deployment

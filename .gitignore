@@ -10,11 +10,6 @@ credentials*
 *.key
 *.p12
 
-# Presentations
-*.pptx
-
-# Database backups
-database/*_backup.sql
 
 # Log files
 *.log
@@ -26,10 +21,10 @@ logs/
 .vscode/
 *.swp
 *~
-.DS_Store
 
 # Frontend dependencies and distribution builds
 frontend/node_modules/
 frontend/dist/
 
 .vercel
+
