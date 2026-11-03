@@ -6,20 +6,15 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [string]$Database = "test",
+    [string]$Database = "smart_helpdesk",
 
     [switch]$Console
 )
 
 $ErrorActionPreference = "Stop"
 
-# Map predefined database names or accept custom database name
-$resolvedDb = switch ($Database.ToLower()) {
-    "test"   { "smart_helpdesk_test" }
-    "demo"   { "smart_helpdesk_demo" }
-    "real"   { "smart_helpdesk" }
-    default  { $Database }
-}
+# Target smart_helpdesk database
+$resolvedDb = if ([string]::IsNullOrWhiteSpace($Database)) { "smart_helpdesk" } else { $Database }
 
 Write-Host "===================================================="
 Write-Host "        SMART HELPDESK - LOCAL LAUNCHER             "

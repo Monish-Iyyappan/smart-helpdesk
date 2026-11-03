@@ -2,6 +2,7 @@ target
 frontend
 node_modules
 .git
-database/backup
 .env*
 scripts
+*.pptx
+deployment

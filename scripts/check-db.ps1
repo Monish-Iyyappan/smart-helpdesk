@@ -166,8 +166,8 @@ if ($dbExists -eq $dbName) {
     exit 1
 }
 
-# B. Check all six required tables exist
-$expectedTables = @("users", "categories", "incidents", "tickets", "ticket_participants", "comments")
+# B. Check all seven required tables exist
+$expectedTables = @("users", "categories", "incidents", "tickets", "ticket_participants", "comments", "ticket_assignment_history")
 $tablesQuery = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$dbName';"
 $foundTables = Invoke-MySqlQuery -Query $tablesQuery
 
@@ -179,7 +179,7 @@ foreach ($tbl in $expectedTables) {
 }
 
 if ($missingTables.Count -eq 0) {
-    Write-Host "[PASS] All 6 required tables exist ($($expectedTables -join ', '))."
+    Write-Host "[PASS] All 7 required tables exist ($($expectedTables -join ', '))."
 } else {
     Write-Host "[FAIL] Missing tables in '$dbName': $($missingTables -join ', ')"
     Write-Host "       Fix: Import schema: Get-Content database\schema.sql | mysql -u $dbUser -p $dbName"
@@ -195,7 +195,7 @@ if ($catCount -gt 0) {
     Write-Host "[PASS] Categories table contains $catCount seeded categories."
 } else {
     Write-Host "[FAIL] Categories table is empty (count: $catCount)."
-    Write-Host "       Fix: Seed database: Get-Content database\seed_data.sql | mysql -u $dbUser -p $dbName"
+    Write-Host "       Fix: Seed database: Get-Content database\seed_schema.sql | mysql -u $dbUser -p $dbName"
 }
 
 # D. Compare MySQL NOW() with Windows system clock
