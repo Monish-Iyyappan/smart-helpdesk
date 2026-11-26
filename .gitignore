@@ -10,7 +10,6 @@ credentials*
 *.key
 *.p12
 
-
 # Log files
 *.log
 logs/
@@ -25,8 +24,13 @@ logs/
 # Frontend dependencies and distribution builds
 frontend/node_modules/
 frontend/dist/
-
 .vercel
-Smart_Helpdesk_Project_Report_Appendices.pdf
-.pptx
+
+# Documents, reports and presentations
+docs/
+*.pdf
+*.pptx
+*.ppt
+*.docx
+*.doc
 ALL_CODE.md
